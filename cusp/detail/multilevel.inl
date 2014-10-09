@@ -18,33 +18,90 @@
 #include <cusp/monitor.h>
 #include <cusp/blas/blas.h>
 
+#include <cusp/precond/smoothed_aggregation_policy.h>
+#include <cusp/precond/smoother_policy.h>
+#include <cusp/precond/solve_policy.h>
+#include <cusp/precond/coarse_solve_policy.h>
+
 namespace cusp
 {
-
-template <typename MatrixType, typename SmootherType, typename SolverType>
-template <typename MatrixType2, typename SmootherType2, typename SolverType2>
-multilevel<MatrixType,SmootherType,SolverType>
-::multilevel(const multilevel<MatrixType2,SmootherType2,SolverType2>& M)
-    : solver(M.solver)
+namespace detail
 {
-    for( size_t lvl = 0; lvl < M.levels.size(); lvl++ )
+
+template<typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+struct multilevel_policy {
+
+    typedef typename MatrixType::index_type   IndexType;
+    typedef typename MatrixType::value_type   ValueType;
+    typedef typename MatrixType::memory_space MemorySpace;
+
+    typedef typename cusp::precond::aggregation::smoothed_aggregation_policy<IndexType,ValueType,MemorySpace> SmoothedAggregationPolicy;
+    typedef typename cusp::precond::jacobi_smoother_policy<ValueType,MemorySpace>       JacobiSmootherPolicy;
+    typedef typename cusp::precond::lu_solve_policy<ValueType>                          LuSolvePolicy;
+    typedef typename cusp::precond::v_cycle_policy<JacobiSmootherPolicy,LuSolvePolicy>  VJacobiLUPolicy;
+
+    typedef typename thrust::detail::eval_if<
+      thrust::detail::is_same<SetupPolicy,thrust::use_default>::value,
+      thrust::detail::identity_<SmoothedAggregationPolicy>,
+      thrust::detail::identity_<SetupPolicy>
+    >::type setup_policy;
+
+    typedef typename thrust::detail::eval_if<
+      thrust::detail::is_same<SolvePolicy,thrust::use_default>::value,
+      thrust::detail::identity_<VJacobiLUPolicy>,
+      thrust::detail::identity_<SolvePolicy>
+    >::type solve_policy;
+};
+
+} // end namespace detail
+
+template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+multilevel<MatrixType,SetupPolicy,SolvePolicy>
+::multilevel(const MatrixType& A, const size_t max_levels, const size_t min_level_size)
+  : A(&A), max_levels(max_levels), min_level_size(min_level_size)
+{
+    CUSP_PROFILE_SCOPED();
+
+    // reserve room for maximum number of levels
+    levels.reserve(max_levels);
+
+    // add the first level
+    levels.push_back(level());
+
+    // build heirarchy
+    while ((levels.back().A.num_rows > min_level_size) &&
+           (levels.size() < max_levels))
+    {
+        extend_hierarchy();
+    }
+
+    // construct additional solve phase components
+    initialize_solve();
+}
+
+template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+template <typename MatrixType2>
+multilevel<MatrixType,SetupPolicy,SolvePolicy>
+::multilevel(const multilevel<MatrixType2,SetupPolicy,SolvePolicy>& M)
+{
+    for(size_t lvl = 0; lvl < M.levels.size(); lvl++)
         levels.push_back(M.levels[lvl]);
 }
 
-template <typename MatrixType, typename SmootherType, typename SolverType>
+template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
 template <typename Array1, typename Array2>
-void multilevel<MatrixType,SmootherType,SolverType>
+void multilevel<MatrixType,SetupPolicy,SolvePolicy>
 ::operator()(const Array1& b, Array2& x)
 {
     CUSP_PROFILE_SCOPED();
 
     // perform 1 V-cycle
-    _solve(b, x, 0);
+    cycle(b, x, 0);
 }
 
-template <typename MatrixType, typename SmootherType, typename SolverType>
+template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
 template <typename Array1, typename Array2>
-void multilevel<MatrixType,SmootherType,SolverType>
+void multilevel<MatrixType,SetupPolicy,SolvePolicy>
 ::solve(const Array1& b, Array2& x)
 {
     CUSP_PROFILE_SCOPED();
@@ -54,15 +111,13 @@ void multilevel<MatrixType,SmootherType,SolverType>
     solve(b, x, monitor);
 }
 
-template <typename MatrixType, typename SmootherType, typename SolverType>
+template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
 template <typename Array1, typename Array2, typename Monitor>
-void multilevel<MatrixType,SmootherType,SolverType>
+void multilevel<MatrixType,SetupPolicy,SolvePolicy>
 ::solve(const Array1& b, Array2& x, Monitor& monitor)
 {
     CUSP_PROFILE_SCOPED();
 
-    /* const MatrixType& A = levels[0].A; */
-    /* const size_t n = A.num_rows; */
     const size_t n = levels[0].A.num_rows;
 
     // use simple iteration
@@ -70,73 +125,26 @@ void multilevel<MatrixType,SmootherType,SolverType>
     cusp::array1d<ValueType,MemorySpace> residual(n);
 
     // compute initial residual
-    /* cusp::multiply(A, x, residual); */
     cusp::multiply(levels[0].A, x, residual);
     cusp::blas::axpby(b, residual, residual, ValueType(1.0), ValueType(-1.0));
 
     while(!monitor.finished(residual))
     {
-        _solve(residual, update, 0);
+        cycle(residual, update, 0);
 
         // x += M * r
         cusp::blas::axpy(update, x, ValueType(1.0));
 
         // update residual
-        /* cusp::multiply(A, x, residual); */
         cusp::multiply(levels[0].A, x, residual);
         cusp::blas::axpby(b, residual, residual, ValueType(1.0), ValueType(-1.0));
         ++monitor;
     }
 }
 
-template <typename MatrixType, typename SmootherType, typename SolverType>
-template <typename Array1, typename Array2>
-void multilevel<MatrixType,SmootherType,SolverType>
-::_solve(const Array1& b, Array2& x, const size_t i)
-{
-    CUSP_PROFILE_SCOPED();
-
-    if (i + 1 == levels.size())
-    {
-        // coarse grid solve
-        // TODO streamline
-        cusp::array1d<ValueType,cusp::host_memory> temp_b(b);
-        cusp::array1d<ValueType,cusp::host_memory> temp_x(x.size());
-        solver(temp_b, temp_x);
-        x = temp_x;
-    }
-    else
-    {
-        /* const MatrixType& A = levels[i].A; */
-
-        // presmooth
-        /* levels[i].smoother.presmooth(A, b, x); */
-        levels[i].smoother.presmooth(levels[i].A, b, x);
-
-        // compute residual <- b - A*x
-        /* cusp::multiply(A, x, levels[i].residual); */
-        cusp::multiply(levels[i].A, x, levels[i].residual);
-        cusp::blas::axpby(b, levels[i].residual, levels[i].residual, ValueType(1.0), ValueType(-1.0));
-
-        // restrict to coarse grid
-        cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
-
-        // compute coarse grid solution
-        _solve(levels[i + 1].b, levels[i + 1].x, i + 1);
-
-        // apply coarse grid correction
-        cusp::multiply(levels[i].P, levels[i + 1].x, levels[i].residual);
-        cusp::blas::axpy(levels[i].residual, x, ValueType(1.0));
-
-        // postsmooth
-        /* levels[i].smoother.postsmooth(A, b, x); */
-        levels[i].smoother.postsmooth(levels[i].A, b, x);
-    }
-}
-
-template <typename MatrixType, typename SmootherType, typename SolverType>
-void multilevel<MatrixType,SmootherType,SolverType>
-::print( void )
+template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+void multilevel<MatrixType,SetupPolicy,SolvePolicy>
+::print(void)
 {
     size_t num_levels = levels.size();
 
@@ -159,9 +167,9 @@ void multilevel<MatrixType,SmootherType,SolverType>
     }
 }
 
-template <typename MatrixType, typename SmootherType, typename SolverType>
-double multilevel<MatrixType,SmootherType,SolverType>
-::operator_complexity( void )
+template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+double multilevel<MatrixType,SetupPolicy,SolvePolicy>
+::operator_complexity(void)
 {
     size_t nnz = 0;
 
@@ -171,9 +179,9 @@ double multilevel<MatrixType,SmootherType,SolverType>
     return (double) nnz / (double) levels[0].A.num_entries;
 }
 
-template <typename MatrixType, typename SmootherType, typename SolverType>
-double multilevel<MatrixType,SmootherType,SolverType>
-::grid_complexity( void )
+template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+double multilevel<MatrixType,SetupPolicy,SolvePolicy>
+::grid_complexity(void)
 {
     size_t unknowns = 0;
     for(size_t index = 0; index < levels.size(); index++)

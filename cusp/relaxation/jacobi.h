@@ -25,15 +25,6 @@
 
 namespace cusp
 {
-namespace precond
-{
-namespace aggregation
-{
-// forward definitions
-template<typename MatrixType> struct sa_level;
-} // end namespace aggregation
-} // end namespace precond
-
 namespace relaxation
 {
 
@@ -53,20 +44,9 @@ public:
     template <typename MemorySpace2>
     jacobi(const jacobi<ValueType,MemorySpace2>& A);
 
-    template <typename MatrixType>
-    jacobi(const cusp::precond::aggregation::sa_level<MatrixType>& sa_level, ValueType weight=4.0/3.0);
-    
-    // ignores initial x
-    template<typename MatrixType, typename VectorType1, typename VectorType2>
-    void presmooth(const MatrixType& A, const VectorType1& b, VectorType2& x);
-   
-    // smooths initial x
-    template<typename MatrixType, typename VectorType1, typename VectorType2>
-    void postsmooth(const MatrixType& A, const VectorType1& b, VectorType2& x);
-
     template <typename MatrixType, typename VectorType1, typename VectorType2>
     void operator()(const MatrixType& A, const VectorType1& b, VectorType2& x);
-        
+
     template <typename MatrixType, typename VectorType1, typename VectorType2>
     void operator()(const MatrixType& A, const VectorType1& b, VectorType2& x, ValueType omega);
 };

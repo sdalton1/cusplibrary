@@ -141,7 +141,6 @@ public:
 
     virtual void galerkin_product(const MatrixType& R, const MatrixType& A, const MatrixType& P, MatrixType& RAP) const
     {
-        // TODO test speed of R * (A * P) vs. (R * A) * P
         MatrixType AP;
         cusp::multiply(A, P, AP);
         cusp::multiply(R, AP, RAP);

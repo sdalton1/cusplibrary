@@ -22,13 +22,18 @@
 #pragma once
 
 #include <cusp/detail/config.h>
-#include <cusp/detail/lu.h>
 
 #include <cusp/array1d.h>
 #include <cusp/linear_operator.h>
 
+
 namespace cusp
 {
+namespace detail
+{
+// Forward definition
+template<typename MatrixType, typename SetupPolicy, typename SolvePolicy> struct multilevel_policy;
+} // end namespace detail
 
 /*! \addtogroup iterative_solvers Multilevel hiearchy
  *  \ingroup iterative_solvers
@@ -40,9 +45,13 @@ namespace cusp
  *
  *  TODO
  */
-template <typename MatrixType, typename SmootherType, typename SolverType>
-class multilevel : public cusp::linear_operator<typename MatrixType::value_type,
-    typename MatrixType::memory_space>
+template <typename MatrixType,
+          typename SetupPolicy = thrust::use_default,
+          typename SolvePolicy = thrust::use_default>
+class multilevel :
+  private detail::multilevel_policy<MatrixType,SetupPolicy,SolvePolicy>::setup_policy,
+  private detail::multilevel_policy<MatrixType,SetupPolicy,SolvePolicy>::solve_policy,
+  public cusp::linear_operator<typename MatrixType::value_type, typename MatrixType::memory_space>
 {
 public:
 
@@ -50,31 +59,37 @@ public:
     typedef typename MatrixType::value_type ValueType;
     typedef typename MatrixType::memory_space MemorySpace;
 
+    typedef typename detail::multilevel_policy<MatrixType,SetupPolicy,SolvePolicy>::setup_policy setup_policy;
+    typedef typename detail::multilevel_policy<MatrixType,SetupPolicy,SolvePolicy>::solve_policy solve_policy;
+
+    using setup_policy::extend_hierarchy;
+    using solve_policy::initialize_solve;
+    using solve_policy::cycle;
+
     struct level
     {
         MatrixType R;  // restriction operator
         MatrixType A;  // matrix
         MatrixType P;  // prolongation operator
-        cusp::array1d<ValueType,MemorySpace> x;               // per-level solution
-        cusp::array1d<ValueType,MemorySpace> b;               // per-level rhs
-        cusp::array1d<ValueType,MemorySpace> residual;        // per-level residual
-
-        SmootherType smoother;
 
         level() {}
 
-        template<typename Level_Type>
-        level(const Level_Type& level) : R(level.R), A(level.A), P(level.P), x(level.x), b(level.b), residual(level.residual), smoother(level.smoother) {}
+        template<typename LevelType>
+        level(const LevelType& L) : R(L.R), A(L.A), P(L.P) {}
     };
 
-    SolverType solver;
+    const MatrixType * A;
+    const size_t max_levels;
+    const size_t min_level_size;
 
     std::vector<level> levels;
 
-    multilevel() {};
+    multilevel() : max_levels(0), min_level_size(0) {};
 
-    template <typename MatrixType2, typename SmootherType2, typename SolverType2>
-    multilevel(const multilevel<MatrixType2, SmootherType2, SolverType2>& M);
+    multilevel(const MatrixType& A, const size_t max_levels = 10, const size_t min_level_size = 100);
+
+    template<typename MatrixType2>
+    multilevel(const multilevel<MatrixType2, SetupPolicy, SolvePolicy>& M);
 
     template <typename Array1, typename Array2>
     void operator()(const Array1& x, Array2& y);
@@ -85,16 +100,11 @@ public:
     template <typename Array1, typename Array2, typename Monitor>
     void solve(const Array1& b, Array2& x, Monitor& monitor);
 
-    void print( void );
+    void print(void);
 
-    double operator_complexity( void );
+    double operator_complexity(void);
 
-    double grid_complexity( void );
-
-protected:
-
-    template <typename Array1, typename Array2>
-    void _solve(const Array1& b, Array2& x, const size_t i);
+    double grid_complexity(void);
 };
 /*! \}
  */
