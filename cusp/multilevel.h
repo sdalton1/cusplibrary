@@ -62,8 +62,9 @@ public:
     typedef typename detail::multilevel_policy<MatrixType,SetupPolicy,CyclePolicy>::setup_policy setup_policy;
     typedef typename detail::multilevel_policy<MatrixType,SetupPolicy,CyclePolicy>::cycle_policy cycle_policy;
 
+    using setup_policy::setup_initialize;
     using setup_policy::extend_hierarchy;
-    using cycle_policy::initialize_solve;
+    using cycle_policy::cycle_initialize;
     using cycle_policy::cycle;
 
     struct level

@@ -110,7 +110,7 @@ void f_cycle_policy<SmootherPolicy, SolverPolicy>
     else
     {
         // presmooth
-        presmooth(levels[i].A, levels[i].b, levels[i].x);
+        presmooth(levels[i].A, b, x);
 
         // compute residual <- b - A*x
         cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
@@ -120,7 +120,7 @@ void f_cycle_policy<SmootherPolicy, SolverPolicy>
         cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
 
         // compute coarse grid solution
-        cycle(levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
+        cycle  (levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
         v.cycle(levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
 
         // apply coarse grid correction
@@ -128,7 +128,7 @@ void f_cycle_policy<SmootherPolicy, SolverPolicy>
         cusp::blas::axpy(levels[i].residual, levels[i].x, 1.0);
 
         // postsmooth
-        postsmooth(levels[i].A, levels[i].b, levels[i].x);
+        postsmooth(levels[i].A, b, x);
     }
 }
 

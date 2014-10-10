@@ -42,8 +42,8 @@ namespace cusp
 {
 namespace precond
 {
-namespace aggregation
-{
+
+// Forward definition of AMG container
 template <typename IndexType, typename ValueType, typename MemorySpace> struct amg_container;
 
 /*! \addtogroup preconditioners Preconditioners
@@ -81,6 +81,12 @@ public:
     std::vector<sa_level> sa_levels;
 
     template<typename MatrixType2>
+    void setup_initialize(const MatrixType2& A)
+    {
+        A_ = A;
+    }
+
+    template<typename MatrixType2>
     void extend_hierarchy(MatrixType2& lvl_R, MatrixType2& lvl_A, MatrixType2& lvl_P)
     {
         CUSP_PROFILE_SCOPED();
@@ -115,16 +121,18 @@ public:
         cusp::transpose(P,R);
 
         // construct Galerkin product R*A*P
-        SetupMatrixType RAP;
-        SetupMatrixType AP;
-        cusp::multiply(A_, P, AP);
-        cusp::multiply(R, AP, RAP);
+        {
+            SetupMatrixType RAP;
+            SetupMatrixType AP;
+            cusp::multiply(A_, P, AP);
+            cusp::multiply(R, AP, RAP);
 
-        lvl_R = R;
-        lvl_P = P;
-        lvl_A = RAP;
+            lvl_R = R;
+            lvl_P = P;
+            lvl_A = RAP;
 
-        A_.swap(RAP);
+            A_.swap(RAP);
+        }
 
         sa_levels.back().aggregates.swap(aggregates);
         sa_levels.push_back(sa_level());
@@ -150,6 +158,5 @@ struct amg_container<IndexType,ValueType,cusp::device_memory>
     typedef typename cusp::hyb_matrix<IndexType,ValueType,cusp::device_memory> solve_type;
 };
 
-} // end namespace aggregation
 } // end namespace precond
 } // end namespace cusp

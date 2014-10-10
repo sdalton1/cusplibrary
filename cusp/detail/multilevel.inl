@@ -35,7 +35,7 @@ struct multilevel_policy {
     typedef typename MatrixType::value_type   ValueType;
     typedef typename MatrixType::memory_space MemorySpace;
 
-    typedef typename cusp::precond::aggregation::smoothed_aggregation_policy<IndexType,ValueType,MemorySpace> SmoothedAggregationPolicy;
+    typedef typename cusp::precond::smoothed_aggregation_policy<IndexType,ValueType,MemorySpace> SmoothedAggregationPolicy;
     typedef typename cusp::precond::jacobi_smoother_policy<ValueType,MemorySpace>       JacobiSmootherPolicy;
     typedef typename cusp::precond::lu_solve_policy<ValueType>                          LuSolvePolicy;
     typedef typename cusp::precond::v_cycle_policy<JacobiSmootherPolicy,LuSolvePolicy>  VJacobiLUPolicy;
@@ -62,22 +62,32 @@ multilevel<MatrixType,SetupPolicy,CyclePolicy>
 {
     CUSP_PROFILE_SCOPED();
 
+    // initialize the setup components to build the hierarchy
+    setup_initialize(A);
+
     // reserve room for maximum number of levels
     levels.reserve(max_levels);
 
-    // add the first level
-    levels.push_back(level());
-
     // build heirarchy
-    while ((levels.back().A.num_rows > min_level_size) &&
-           (levels.size() < max_levels))
+    do
     {
-        extend_hierarchy(levels.back().R, levels.back().A, levels.back().P);
+        // create container to store next level
         levels.push_back(level());
-    }
+
+        // construct level
+        extend_hierarchy(levels.back().R, levels.back().A, levels.back().P);
+
+        // allocate buffers for cycling on current level
+        size_t N = levels.back().A.num_rows;
+        levels.back().b.resize(N);
+        levels.back().x.resize(N);
+        levels.back().residual.resize(N);
+
+    } while ((levels.back().A.num_rows > min_level_size) &&
+             (levels.size() < max_levels));
 
     // construct additional solve phase components
-    initialize_solve();
+    cycle_initialize();
 }
 
 template <typename MatrixType, typename SetupPolicy, typename CyclePolicy>
@@ -120,26 +130,23 @@ void multilevel<MatrixType,SetupPolicy,CyclePolicy>
 {
     CUSP_PROFILE_SCOPED();
 
-    const size_t n = levels[0].A.num_rows;
-
-    // use simple iteration
-    cusp::array1d<ValueType,MemorySpace> update(n);
-    cusp::array1d<ValueType,MemorySpace> residual(n);
+    const size_t n = A->num_rows;
 
     // compute initial residual
-    cusp::multiply(levels[0].A, x, residual);
-    cusp::blas::axpby(b, residual, residual, ValueType(1.0), ValueType(-1.0));
+    cusp::multiply(*A, x, levels[0].residual);
+    cusp::blas::axpby(b, levels[0].residual, levels[0].residual, 1.0, -1.0);
 
-    while(!monitor.finished(residual))
+    while(!monitor.finished(levels[0].residual))
     {
-        cycle(levels, residual, update, 0);
+        // execute cycle
+        cycle(levels, levels[0].residual, levels[0].x, 0);
 
         // x += M * r
-        cusp::blas::axpy(update, x, ValueType(1.0));
+        cusp::blas::axpy(levels[0].x, x, ValueType(1.0));
 
         // update residual
-        cusp::multiply(levels[0].A, x, residual);
-        cusp::blas::axpby(b, residual, residual, ValueType(1.0), ValueType(-1.0));
+        cusp::multiply(*A, x, levels[0].residual);
+        cusp::blas::axpby(b, levels[0].residual, levels[0].residual, 1.0, -1.0);
         ++monitor;
     }
 }

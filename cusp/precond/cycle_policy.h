@@ -26,17 +26,15 @@ class v_cycle_policy
   : private SmootherPolicy, private SolverPolicy
 {
     protected:
-    typedef SmootherPolicy smoother_policy;
-    typedef SolverPolicy   solver_policy;
 
-    using solver_policy::coarse_solve;
-    using smoother_policy::presmooth;
-    using smoother_policy::postsmooth;
+    using SolverPolicy::coarse_solve;
+    using SmootherPolicy::presmooth;
+    using SmootherPolicy::postsmooth;
+
+    void cycle_initialize(void) {}
 
     template<typename Levels, typename Array1, typename Array2>
     void cycle(Levels& levels, const Array1& b, Array2& x, const size_t i);
-
-    void initialize_solve(void) {}
 };
 
 template <typename SmootherPolicy, typename SolverPolicy>
@@ -44,17 +42,15 @@ class w_cycle_policy
   : private SmootherPolicy, private SolverPolicy
 {
     protected:
-    typedef SmootherPolicy smoother_policy;
-    typedef SolverPolicy   solver_policy;
 
-    using solver_policy::coarse_solve;
-    using smoother_policy::presmooth;
-    using smoother_policy::postsmooth;
+    using SolverPolicy::coarse_solve;
+    using SmootherPolicy::presmooth;
+    using SmootherPolicy::postsmooth;
+
+    void cycle_initialize(void) {}
 
     template<typename Levels, typename Array1, typename Array2>
     void cycle(Levels& levels, const Array1& b, Array2& x, const size_t i);
-
-    void initialize_solve(void) {}
 };
 
 template <typename SmootherPolicy, typename SolverPolicy>
@@ -62,19 +58,17 @@ class f_cycle_policy
   : private SmootherPolicy, private SolverPolicy
 {
     protected:
-    typedef SmootherPolicy smoother_policy;
-    typedef SolverPolicy   solver_policy;
 
-    using solver_policy::coarse_solve;
-    using smoother_policy::presmooth;
-    using smoother_policy::postsmooth;
+    using SolverPolicy::coarse_solve;
+    using SmootherPolicy::presmooth;
+    using SmootherPolicy::postsmooth;
 
     v_cycle_policy<SmootherPolicy,SolverPolicy> v;
 
+    void cycle_initialize(void) {}
+
     template<typename Levels, typename Array1, typename Array2>
     void cycle(Levels& levels, const Array1& b, Array2& x, const size_t i);
-
-    void initialize_solve(void) {}
 };
 
 } // end namespace precond
