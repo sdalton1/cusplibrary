@@ -19,9 +19,7 @@
 #include <cusp/blas/blas.h>
 
 #include <cusp/precond/smoothed_aggregation_policy.h>
-#include <cusp/precond/smoother_policy.h>
 #include <cusp/precond/cycle_policy.h>
-#include <cusp/precond/solve_policy.h>
 
 namespace cusp
 {
@@ -36,9 +34,7 @@ struct multilevel_policy {
     typedef typename MatrixType::memory_space MemorySpace;
 
     typedef typename cusp::precond::smoothed_aggregation_policy<IndexType,ValueType,MemorySpace> SmoothedAggregationPolicy;
-    typedef typename cusp::precond::jacobi_smoother_policy<ValueType,MemorySpace>       JacobiSmootherPolicy;
-    typedef typename cusp::precond::lu_solve_policy<ValueType>                          LuSolvePolicy;
-    typedef typename cusp::precond::v_cycle_policy<JacobiSmootherPolicy,LuSolvePolicy>  VJacobiLUPolicy;
+    typedef typename cusp::precond::cycle_policy<ValueType,MemorySpace>                          VJacobiLUPolicy;
 
     typedef typename thrust::detail::eval_if<
       thrust::detail::is_same<SetupPolicy,thrust::use_default>::value,
@@ -87,7 +83,7 @@ multilevel<MatrixType,SetupPolicy,CyclePolicy>
              (levels.size() < max_levels));
 
     // construct additional solve phase components
-    cycle_initialize();
+    cycle_initialize(levels);
 }
 
 template <typename MatrixType, typename SetupPolicy, typename CyclePolicy>

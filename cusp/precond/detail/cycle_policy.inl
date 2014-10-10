@@ -22,115 +22,118 @@ namespace cusp
 namespace precond
 {
 
-template <typename SmootherPolicy, typename SolverPolicy>
-template<typename Levels, typename Array1, typename Array2>
-void v_cycle_policy<SmootherPolicy, SolverPolicy>
-::cycle(Levels& levels, const Array1& b, Array2& x, const size_t i)
+class v_cycle_policy
 {
-    CUSP_PROFILE_SCOPED();
-
-    if (i + 1 == levels.size())
+    template<typename Levels, typename Array1, typename Array2>
+    void cycle(Levels& levels, const Array1& b, Array2& x, const size_t i)
     {
-        // coarse grid solve
-        coarse_solve(levels[i].b, levels[i].x);
+        CUSP_PROFILE_SCOPED();
+
+        if (i + 1 == levels.size())
+        {
+            // coarse grid solve
+            coarse_solve(levels[i].b, levels[i].x);
+        }
+        else
+        {
+            // presmooth
+            presmooth(levels[i].A, levels[i].b, levels[i].x, i);
+
+            // compute residual <- b - A*x
+            cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
+            cusp::blas::axpby(levels[i].b, levels[i].residual, levels[i].residual, 1.0, -1.0);
+
+            // restrict to coarse grid
+            cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
+
+            // compute coarse grid solution
+            cycle(levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
+
+            // apply coarse grid correction
+            cusp::multiply(levels[i].P, levels[i + 1].x, levels[i].residual);
+            cusp::blas::axpy(levels[i].residual, levels[i].x, 1.0);
+
+            // postsmooth
+            postsmooth(levels[i].A, levels[i].b, levels[i].x, i);
+        }
     }
-    else
-    {
-        // presmooth
-        presmooth(levels[i].A, levels[i].b, levels[i].x, i);
+};
 
-        // compute residual <- b - A*x
-        cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
-        cusp::blas::axpby(levels[i].b, levels[i].residual, levels[i].residual, 1.0, -1.0);
-
-        // restrict to coarse grid
-        cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
-
-        // compute coarse grid solution
-        cycle(levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
-
-        // apply coarse grid correction
-        cusp::multiply(levels[i].P, levels[i + 1].x, levels[i].residual);
-        cusp::blas::axpy(levels[i].residual, levels[i].x, 1.0);
-
-        // postsmooth
-        postsmooth(levels[i].A, levels[i].b, levels[i].x, i);
-    }
-}
-
-template <typename SmootherPolicy, typename SolverPolicy>
-template<typename Levels, typename Array1, typename Array2>
-void w_cycle_policy<SmootherPolicy, SolverPolicy>
-::cycle(Levels& levels, const Array1& b, Array2& x, const size_t i)
+class w_cycle_policy
 {
-    CUSP_PROFILE_SCOPED();
-
-    if (i + 1 == levels.size())
+    template<typename Levels, typename Array1, typename Array2>
+    void cycle(Levels& levels, const Array1& b, Array2& x, const size_t i)
     {
-        // coarse grid solve
-        coarse_solve(levels[i].b, levels[i].x);
+        CUSP_PROFILE_SCOPED();
+
+        if (i + 1 == levels.size())
+        {
+            // coarse grid solve
+            coarse_solve(levels[i].b, levels[i].x);
+        }
+        else
+        {
+            // presmooth
+            presmooth(levels[i].A, levels[i].b, levels[i].x);
+
+            // compute residual <- b - A*x
+            cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
+            cusp::blas::axpby(levels[i].b, levels[i].residual, levels[i].residual, 1.0, -1.0);
+
+            // restrict to coarse grid
+            cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
+
+            // compute coarse grid solution
+            cycle(levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
+            cycle(levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
+
+            // apply coarse grid correction
+            cusp::multiply(levels[i].P, levels[i + 1].x, levels[i].residual);
+            cusp::blas::axpy(levels[i].residual, levels[i].x, 1.0);
+
+            // postsmooth
+            postsmooth(levels[i].A, levels[i].b, levels[i].x);
+        }
     }
-    else
-    {
-        // presmooth
-        presmooth(levels[i].A, levels[i].b, levels[i].x);
+};
 
-        // compute residual <- b - A*x
-        cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
-        cusp::blas::axpby(levels[i].b, levels[i].residual, levels[i].residual, 1.0, -1.0);
-
-        // restrict to coarse grid
-        cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
-
-        // compute coarse grid solution
-        cycle(levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
-        cycle(levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
-
-        // apply coarse grid correction
-        cusp::multiply(levels[i].P, levels[i + 1].x, levels[i].residual);
-        cusp::blas::axpy(levels[i].residual, levels[i].x, 1.0);
-
-        // postsmooth
-        postsmooth(levels[i].A, levels[i].b, levels[i].x);
-    }
-}
-
-template <typename SmootherPolicy, typename SolverPolicy>
-template<typename Levels, typename Array1, typename Array2>
-void f_cycle_policy<SmootherPolicy, SolverPolicy>
-::cycle(Levels& levels, const Array1& b, Array2& x, const size_t i)
+class f_cycle_policy
 {
-    CUSP_PROFILE_SCOPED();
-
-    if (i + 1 == levels.size())
+    template<typename Levels, typename Array1, typename Array2>
+    void cycle(Levels& levels, const Array1& b, Array2& x, const size_t i)
     {
-        // coarse grid solve
-        coarse_solve(levels[i].b, levels[i].x);
+        CUSP_PROFILE_SCOPED();
+
+        if (i + 1 == levels.size())
+        {
+            // coarse grid solve
+            coarse_solve(levels[i].b, levels[i].x);
+        }
+        else
+        {
+            // presmooth
+            presmooth(levels[i].A, b, x);
+
+            // compute residual <- b - A*x
+            cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
+            cusp::blas::axpby(levels[i].b, levels[i].residual, levels[i].residual, 1.0, -1.0);
+
+            // restrict to coarse grid
+            cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
+
+            // compute coarse grid solution
+            cycle  (levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
+            v.cycle(levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
+
+            // apply coarse grid correction
+            cusp::multiply(levels[i].P, levels[i + 1].x, levels[i].residual);
+            cusp::blas::axpy(levels[i].residual, levels[i].x, 1.0);
+
+            // postsmooth
+            postsmooth(levels[i].A, b, x);
+        }
     }
-    else
-    {
-        // presmooth
-        presmooth(levels[i].A, b, x);
-
-        // compute residual <- b - A*x
-        cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
-        cusp::blas::axpby(levels[i].b, levels[i].residual, levels[i].residual, 1.0, -1.0);
-
-        // restrict to coarse grid
-        cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
-
-        // compute coarse grid solution
-        cycle  (levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
-        v.cycle(levels, levels[i + 1].residual, levels[i + 1].x, i + 1);
-
-        // apply coarse grid correction
-        cusp::multiply(levels[i].P, levels[i + 1].x, levels[i].residual);
-        cusp::blas::axpy(levels[i].residual, levels[i].x, 1.0);
-
-        // postsmooth
-        postsmooth(levels[i].A, b, x);
-    }
-}
+};
 
 } // end namespace precond
 } // end namespace cusp

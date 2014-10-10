@@ -16,15 +16,20 @@
 
 #pragma once
 
+#include <cusp/precond/smoother_policy.h>
+#include <cusp/precond/solve_policy.h>
+
 namespace cusp
 {
 namespace precond
 {
 
+class v_cycle_policy;
+
 template<typename ValueType, typename MemorySpace, typename CycleTypePolicy>
 struct select_cycle_type_policy {
 
-    typedef typename cusp::precond::v_cycle_policy<ValueType,MemorySpace> VCyclePolicy;
+    typedef typename cusp::precond::v_cycle_policy VCyclePolicy;
 
     typedef typename thrust::detail::eval_if<
       thrust::detail::is_same<CycleTypePolicy,thrust::use_default>::value,
@@ -45,14 +50,14 @@ struct select_smoother_policy {
     >::type type;
 };
 
-template<typename ValueType, typename MemorySpace, typename SolverPolicy>
-struct select_solver_policy {
+template<typename ValueType, typename SolverPolicy>
+struct select_solve_policy {
 
-    typedef typename cusp::precond::lu_solver_policy<ValueType> LuSolverPolicy;
+    typedef typename cusp::precond::lu_solve_policy<ValueType> LuSolvePolicy;
 
     typedef typename thrust::detail::eval_if<
       thrust::detail::is_same<SolverPolicy,thrust::use_default>::value,
-      thrust::detail::identity_<LuSolverPolicy>,
+      thrust::detail::identity_<LuSolvePolicy>,
       thrust::detail::identity_<SolverPolicy>
     >::type type;
 };
@@ -61,32 +66,37 @@ template <typename ValueType,
           typename MemorySpace,
           typename CycleTypePolicy = thrust::use_default,
           typename SmootherPolicy  = thrust::use_default,
-          typename SolverPolicy    = thrust::use_default>
+          typename SolvePolicy     = thrust::use_default>
 class cycle_policy :
   private select_cycle_type_policy<ValueType,MemorySpace,CycleTypePolicy>::type,
   private select_smoother_policy<ValueType,MemorySpace,SmootherPolicy>::type,
-  private select_solver_policy<ValueType,MemorySpace,SolverPolicy>::type
+  private select_solve_policy<ValueType,SolvePolicy>::type
 {
     protected:
 
-    typedef typename select_cycle_policy<ValueType,MemorySpace,CycleTypePolicy>::type   cycle_type_policy;
-    typedef typename select_smoother_policy<ValueType,MemorySpace,SmootherPolicy>::type smoother_policy;
-    typedef typename select_solver_policy<ValueType,MemorySpace,SolverPolicy>::type     solver_policy;
+    typedef typename select_cycle_type_policy<ValueType,MemorySpace,CycleTypePolicy>::type   cycle_type_policy;
+    typedef typename select_smoother_policy<ValueType,MemorySpace,SmootherPolicy>::type      smoother_policy;
+    typedef typename select_solve_policy<ValueType,SolvePolicy>::type                        solve_policy;
 
-    typedef typename smoother_policy::SmootherType                                      SmootherType;
-    typedef typename solver_policy::SolverType                                          SolverType;
+    typedef typename smoother_policy::SmootherType                                           SmootherType;
 
     using cycle_type_policy::cycle;
     using smoother_policy::presmooth;
     using smoother_policy::postsmooth;
-    using solver_policy::coarse_solve;
+
+    using solve_policy::coarse_initialize;
+    using solve_policy::coarse_solve;
 
     std::vector<SmootherType> smoothers;
-    SolverType coarse_solve;
 
     template<typename Levels>
     void cycle_initialize(const Levels& levels)
     {
+      for(int i = 0; i < levels.size(); i++) {
+        smoothers.push_back(SmootherType(levels[i].A));
+      }
+
+      coarse_initialize(levels.back().A);
     }
 };
 

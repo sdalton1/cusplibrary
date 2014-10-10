@@ -32,10 +32,8 @@ private:
 
 public:
 
-    lu_solve_policy() {}
-
-    template <typename MatrixType>
-    lu_solve_policy(const MatrixType& A_);
+    template<typename MatrixType>
+    void coarse_initialize(const MatrixType& A);
 
     template <typename VectorType1, typename VectorType2>
     void coarse_solve(VectorType1& b, VectorType2& x);

@@ -24,8 +24,8 @@ namespace precond
 
 template <typename ValueType>
 template <typename MatrixType>
-lu_solve_policy<ValueType>
-::lu_solve_policy(const MatrixType& A_)
+void lu_solve_policy<ValueType>
+::coarse_initialize(const MatrixType& A_)
 {
     CUSP_PROFILE_SCOPED();
 
