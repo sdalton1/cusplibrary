@@ -21,54 +21,73 @@ namespace cusp
 namespace precond
 {
 
-template <typename SmootherPolicy, typename SolverPolicy>
-class v_cycle_policy
-  : private SmootherPolicy, private SolverPolicy
-{
-    protected:
+template<typename ValueType, typename MemorySpace, typename CycleTypePolicy>
+struct select_cycle_type_policy {
 
-    using SolverPolicy::coarse_solve;
-    using SmootherPolicy::presmooth;
-    using SmootherPolicy::postsmooth;
+    typedef typename cusp::precond::v_cycle_policy<ValueType,MemorySpace> VCyclePolicy;
 
-    void cycle_initialize(void) {}
-
-    template<typename Levels, typename Array1, typename Array2>
-    void cycle(Levels& levels, const Array1& b, Array2& x, const size_t i);
+    typedef typename thrust::detail::eval_if<
+      thrust::detail::is_same<CycleTypePolicy,thrust::use_default>::value,
+      thrust::detail::identity_<VCyclePolicy>,
+      thrust::detail::identity_<CycleTypePolicy>
+    >::type type;
 };
 
-template <typename SmootherPolicy, typename SolverPolicy>
-class w_cycle_policy
-  : private SmootherPolicy, private SolverPolicy
-{
-    protected:
+template<typename ValueType, typename MemorySpace, typename SmootherPolicy>
+struct select_smoother_policy {
 
-    using SolverPolicy::coarse_solve;
-    using SmootherPolicy::presmooth;
-    using SmootherPolicy::postsmooth;
+    typedef typename cusp::precond::jacobi_smoother_policy<ValueType,MemorySpace> JacobiSmootherPolicy;
 
-    void cycle_initialize(void) {}
-
-    template<typename Levels, typename Array1, typename Array2>
-    void cycle(Levels& levels, const Array1& b, Array2& x, const size_t i);
+    typedef typename thrust::detail::eval_if<
+      thrust::detail::is_same<SmootherPolicy,thrust::use_default>::value,
+      thrust::detail::identity_<JacobiSmootherPolicy>,
+      thrust::detail::identity_<SmootherPolicy>
+    >::type type;
 };
 
-template <typename SmootherPolicy, typename SolverPolicy>
-class f_cycle_policy
-  : private SmootherPolicy, private SolverPolicy
+template<typename ValueType, typename MemorySpace, typename SolverPolicy>
+struct select_solver_policy {
+
+    typedef typename cusp::precond::lu_solver_policy<ValueType> LuSolverPolicy;
+
+    typedef typename thrust::detail::eval_if<
+      thrust::detail::is_same<SolverPolicy,thrust::use_default>::value,
+      thrust::detail::identity_<LuSolverPolicy>,
+      thrust::detail::identity_<SolverPolicy>
+    >::type type;
+};
+
+template <typename ValueType,
+          typename MemorySpace,
+          typename CycleTypePolicy = thrust::use_default,
+          typename SmootherPolicy  = thrust::use_default,
+          typename SolverPolicy    = thrust::use_default>
+class cycle_policy :
+  private select_cycle_type_policy<ValueType,MemorySpace,CycleTypePolicy>::type,
+  private select_smoother_policy<ValueType,MemorySpace,SmootherPolicy>::type,
+  private select_solver_policy<ValueType,MemorySpace,SolverPolicy>::type
 {
     protected:
 
-    using SolverPolicy::coarse_solve;
-    using SmootherPolicy::presmooth;
-    using SmootherPolicy::postsmooth;
+    typedef typename select_cycle_policy<ValueType,MemorySpace,CycleTypePolicy>::type   cycle_type_policy;
+    typedef typename select_smoother_policy<ValueType,MemorySpace,SmootherPolicy>::type smoother_policy;
+    typedef typename select_solver_policy<ValueType,MemorySpace,SolverPolicy>::type     solver_policy;
 
-    v_cycle_policy<SmootherPolicy,SolverPolicy> v;
+    typedef typename smoother_policy::SmootherType                                      SmootherType;
+    typedef typename solver_policy::SolverType                                          SolverType;
 
-    void cycle_initialize(void) {}
+    using cycle_type_policy::cycle;
+    using smoother_policy::presmooth;
+    using smoother_policy::postsmooth;
+    using solver_policy::coarse_solve;
 
-    template<typename Levels, typename Array1, typename Array2>
-    void cycle(Levels& levels, const Array1& b, Array2& x, const size_t i);
+    std::vector<SmootherType> smoothers;
+    SolverType coarse_solve;
+
+    template<typename Levels>
+    void cycle_initialize(const Levels& levels)
+    {
+    }
 };
 
 } // end namespace precond

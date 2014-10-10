@@ -80,7 +80,8 @@ public:
         cusp::array1d<ValueType,MemorySpace> residual;
 
         template<typename LevelType>
-        level(const LevelType& L) : R(L.R), A(L.A), P(L.P) {}
+        level(const LevelType& L) : R(L.R), A(L.A), P(L.P),
+                                    x(L.x), b(L.b), residual(L.residual) {}
     };
 
     const MatrixType * A;
