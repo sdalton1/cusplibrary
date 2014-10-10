@@ -27,15 +27,15 @@ namespace precond
 template <typename ValueType, typename MemorySpace>
 template <typename LevelType>
 void jacobi_smoother_policy<ValueType,MemorySpace>
-::generate_smoother(const LevelType& level)
+::generate_smoother(const LevelType& level, const ValueType omega)
 {
-    smoothers.push_back(SmootherType(level.A,level.omega));
+    jacobi_smoothers.push_back(SmootherType(level.A,omega));
 }
 
 template <typename ValueType, typename MemorySpace>
 template<typename MatrixType, typename VectorType1, typename VectorType2>
 void jacobi_smoother_policy<ValueType,MemorySpace>
-::presmooth(const MatrixType&, const VectorType1& b, VectorType2& x, const size_t i)
+::presmooth(const MatrixType& A, const VectorType1& b, VectorType2& x, const size_t i)
 {
     CUSP_PROFILE_SCOPED();
 
@@ -43,7 +43,7 @@ void jacobi_smoother_policy<ValueType,MemorySpace>
     thrust::transform(b.begin(), b.end(),
                       jacobi_smoothers[i].diagonal.begin(),
                       x.begin(),
-                      detail::jacobi_presmooth_functor<ValueType>(jacobi_smoothers[i].omega));
+                      cusp::relaxation::detail::jacobi_presmooth_functor<ValueType>(jacobi_smoothers[i].default_omega));
 }
 
 template <typename ValueType, typename MemorySpace>
@@ -79,8 +79,8 @@ void polynomial_smoother_policy<ValueType,MemorySpace>
     {
         scale_factor = polynomial_smoothers[i].default_coefficients[i];
 
-        cusp::multiply(A, x, y);
-        cusp::blas::axpby(y, b, x, ValueType(1.0), scale_factor);
+        cusp::multiply(A, x, polynomial_smoothers[i].y);
+        cusp::blas::axpby(polynomial_smoothers[i].y, b, x, ValueType(1.0), scale_factor);
     }
 }
 

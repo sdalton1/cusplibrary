@@ -22,117 +22,93 @@ namespace cusp
 namespace precond
 {
 
-template <typename SmootherPolicy, typename SolverPolicy>
-template<typename Array1, typename Array2>
-void v_cycle_policy<SmootherPolicy, SolverPolicy>
-::cycle(const Array1& b, Array2& x, const size_t i)
+template <typename ValueType>
+template <typename MatrixType>
+lu_solve_policy<ValueType>
+::lu_solve_policy(const MatrixType& A_)
 {
     CUSP_PROFILE_SCOPED();
 
-    if (i + 1 == levels.size())
+    assert(A_.num_rows == A_.num_cols);
+
+    A = A_;
+    int n = A.num_rows;
+    pivot.resize(n);
+
+    // For each row and column, k = 0, ..., n-1,
+    for (int k = 0; k < n; k++)
     {
-        // coarse grid solve
-        coarse_solve(temp_b, temp_x);
-        levels[i].x = temp_x;
-    }
-    else
-    {
-        // presmooth
-        presmooth(levels[i].A, levels[i].b, levels[i].x);
+        // find the pivot row
+        pivot[k] = k;
+        ValueType max = std::fabs(A(k,k));
 
-        // compute residual <- b - A*x
-        cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
-        cusp::blas::axpby(levels[i].b, levels[i].residual, levels[i].residual, ValueType(1.0), ValueType(-1.0));
+        for (int j = k + 1; j < n; j++)
+        {
+            if (max < std::fabs(A(j,k)))
+            {
+                max = std::fabs(A(j,k));
+                pivot[k] = j;
+            }
+        }
 
-        // restrict to coarse grid
-        cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
+        // and if the pivot row differs from the current row, then
+        // interchange the two rows.
+        if (pivot[k] != k)
+            for (int j = 0; j < n; j++)
+                std::swap(A(k,j), A(pivot[k],j));
 
-        // compute coarse grid solution
-        cycle(levels[i + 1].residual, levels[i + 1].x, i + 1);
+        // and if the matrix is singular, return error
+        if (A(k,k) == 0.0)
+            throw cusp::runtime_exception("matrix is singular");
 
-        // apply coarse grid correction
-        cusp::multiply(levels[i].P, levels[i + 1].x, levels[i].residual);
-        cusp::blas::axpy(levels[i].residual, levels[i].x, ValueType(1.0));
+        // otherwise find the lower triangular matrix elements for column k.
+        for (int i = k + 1; i < n; i++)
+            A(i,k) /= A(k,k);
 
-        // postsmooth
-        postsmooth(levels[i].A, levels[i].b, levels[i].x);
+        // update remaining matrix
+        for (int i = k + 1; i < n; i++)
+            for (int j = k + 1; j < n; j++)
+                A(i,j) -= A(i,k) * A(k,j);
     }
 }
 
-template <typename SmootherPolicy, typename SolverPolicy>
-template<typename Array1, typename Array2>
-void w_cycle_policy<SmootherPolicy, SolverPolicy>
-::cycle(const Array1& b, Array2& x, const size_t i)
+template <typename ValueType>
+template <typename VectorType1, typename VectorType2>
+void lu_solve_policy<ValueType>
+::coarse_solve(VectorType1& b, VectorType2& x)
 {
     CUSP_PROFILE_SCOPED();
 
-    if (i + 1 == levels.size())
+    const int n = A.num_rows;
+
+    // copy rhs to x
+    temp_x = b;
+
+    // Solve the linear equation Lx = b for x, where L is a lower
+    // triangular matrix with an implied 1 along the diagonal.
+    for (int k = 0; k < n; k++)
     {
-        // coarse grid solve
-        coarse_solve(temp_b, temp_x);
-        levels[i].x = temp_x;
+        if (pivot[k] != k)
+            std::swap(temp_x[k],temp_x[pivot[k]]);
+
+        for (int i = 0; i < k; i++)
+            temp_x[k] -= A(k,i) * temp_x[i];
     }
-    else
+
+    // Solve the linear equation Ux = y, where y is the solution
+    // obtained above of Lx = b and U is an upper triangular matrix.
+    for (int k = n - 1; k >= 0; k--)
     {
-        // presmooth
-        presmooth(levels[i].A, levels[i].b, levels[i].x);
+        for (int i = k + 1; i < n; i++)
+            temp_x[k] -= A(k,i) * temp_x[i];
 
-        // compute residual <- b - A*x
-        cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
-        cusp::blas::axpby(levels[i].b, levels[i].residual, levels[i].residual, ValueType(1.0), ValueType(-1.0));
+        if (A(k,k) == 0)
+            throw cusp::runtime_exception("matrix is non-invertible");
 
-        // restrict to coarse grid
-        cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
-
-        // compute coarse grid solution
-        cycle(levels[i + 1].residual, levels[i + 1].x, i + 1);
-        cycle(levels[i + 1].residual, levels[i + 1].x, i + 1);
-
-        // apply coarse grid correction
-        cusp::multiply(levels[i].P, levels[i + 1].x, levels[i].residual);
-        cusp::blas::axpy(levels[i].residual, levels[i].x, ValueType(1.0));
-
-        // postsmooth
-        postsmooth(levels[i].A, levels[i].b, levels[i].x);
+        temp_x[k] /= A(k,k);
     }
-}
 
-template <typename SmootherPolicy, typename SolverPolicy>
-template<typename Array1, typename Array2>
-void f_cycle_policy<SmootherPolicy, SolverPolicy>
-::cycle(const Array1& b, Array2& x, const size_t i)
-{
-    CUSP_PROFILE_SCOPED();
-
-    if (i + 1 == levels.size())
-    {
-        // coarse grid solve
-        coarse_solve(temp_b, temp_x);
-        levels[i].x = temp_x;
-    }
-    else
-    {
-        // presmooth
-        presmooth(levels[i].A, levels[i].b, levels[i].x);
-
-        // compute residual <- b - A*x
-        cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
-        cusp::blas::axpby(levels[i].b, levels[i].residual, levels[i].residual, ValueType(1.0), ValueType(-1.0));
-
-        // restrict to coarse grid
-        cusp::multiply(levels[i].R, levels[i].residual, levels[i + 1].b);
-
-        // compute coarse grid solution
-        cycle(levels[i + 1].residual, levels[i + 1].x, i + 1);
-        V::cycle(levels[i + 1].residual, levels[i + 1].x, i + 1);
-
-        // apply coarse grid correction
-        cusp::multiply(levels[i].P, levels[i + 1].x, levels[i].residual);
-        cusp::blas::axpy(levels[i].residual, levels[i].x, ValueType(1.0));
-
-        // postsmooth
-        postsmooth(levels[i].A, levels[i].b, levels[i].x);
-    }
+    b = temp_x;
 }
 
 } // end namespace precond

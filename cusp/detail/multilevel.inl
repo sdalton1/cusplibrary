@@ -20,15 +20,15 @@
 
 #include <cusp/precond/smoothed_aggregation_policy.h>
 #include <cusp/precond/smoother_policy.h>
+#include <cusp/precond/cycle_policy.h>
 #include <cusp/precond/solve_policy.h>
-#include <cusp/precond/coarse_solve_policy.h>
 
 namespace cusp
 {
 namespace detail
 {
 
-template<typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+template<typename MatrixType, typename SetupPolicy, typename CyclePolicy>
 struct multilevel_policy {
 
     typedef typename MatrixType::index_type   IndexType;
@@ -47,16 +47,16 @@ struct multilevel_policy {
     >::type setup_policy;
 
     typedef typename thrust::detail::eval_if<
-      thrust::detail::is_same<SolvePolicy,thrust::use_default>::value,
+      thrust::detail::is_same<CyclePolicy,thrust::use_default>::value,
       thrust::detail::identity_<VJacobiLUPolicy>,
-      thrust::detail::identity_<SolvePolicy>
-    >::type solve_policy;
+      thrust::detail::identity_<CyclePolicy>
+    >::type cycle_policy;
 };
 
 } // end namespace detail
 
-template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
-multilevel<MatrixType,SetupPolicy,SolvePolicy>
+template <typename MatrixType, typename SetupPolicy, typename CyclePolicy>
+multilevel<MatrixType,SetupPolicy,CyclePolicy>
 ::multilevel(const MatrixType& A, const size_t max_levels, const size_t min_level_size)
   : A(&A), max_levels(max_levels), min_level_size(min_level_size)
 {
@@ -72,36 +72,38 @@ multilevel<MatrixType,SetupPolicy,SolvePolicy>
     while ((levels.back().A.num_rows > min_level_size) &&
            (levels.size() < max_levels))
     {
-        extend_hierarchy();
+        extend_hierarchy(levels.back().R, levels.back().A, levels.back().P);
+        levels.push_back(level());
     }
 
     // construct additional solve phase components
     initialize_solve();
 }
 
-template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+template <typename MatrixType, typename SetupPolicy, typename CyclePolicy>
 template <typename MatrixType2>
-multilevel<MatrixType,SetupPolicy,SolvePolicy>
-::multilevel(const multilevel<MatrixType2,SetupPolicy,SolvePolicy>& M)
+multilevel<MatrixType,SetupPolicy,CyclePolicy>
+::multilevel(const multilevel<MatrixType2,SetupPolicy,CyclePolicy>& M)
+  : A(M.A), max_levels(M.max_levels), min_level_size(M.min_level_size)
 {
     for(size_t lvl = 0; lvl < M.levels.size(); lvl++)
         levels.push_back(M.levels[lvl]);
 }
 
-template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+template <typename MatrixType, typename SetupPolicy, typename CyclePolicy>
 template <typename Array1, typename Array2>
-void multilevel<MatrixType,SetupPolicy,SolvePolicy>
+void multilevel<MatrixType,SetupPolicy,CyclePolicy>
 ::operator()(const Array1& b, Array2& x)
 {
     CUSP_PROFILE_SCOPED();
 
     // perform 1 V-cycle
-    cycle(b, x, 0);
+    cycle(levels, b, x, 0);
 }
 
-template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+template <typename MatrixType, typename SetupPolicy, typename CyclePolicy>
 template <typename Array1, typename Array2>
-void multilevel<MatrixType,SetupPolicy,SolvePolicy>
+void multilevel<MatrixType,SetupPolicy,CyclePolicy>
 ::solve(const Array1& b, Array2& x)
 {
     CUSP_PROFILE_SCOPED();
@@ -111,9 +113,9 @@ void multilevel<MatrixType,SetupPolicy,SolvePolicy>
     solve(b, x, monitor);
 }
 
-template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
+template <typename MatrixType, typename SetupPolicy, typename CyclePolicy>
 template <typename Array1, typename Array2, typename Monitor>
-void multilevel<MatrixType,SetupPolicy,SolvePolicy>
+void multilevel<MatrixType,SetupPolicy,CyclePolicy>
 ::solve(const Array1& b, Array2& x, Monitor& monitor)
 {
     CUSP_PROFILE_SCOPED();
@@ -130,7 +132,7 @@ void multilevel<MatrixType,SetupPolicy,SolvePolicy>
 
     while(!monitor.finished(residual))
     {
-        cycle(residual, update, 0);
+        cycle(levels, residual, update, 0);
 
         // x += M * r
         cusp::blas::axpy(update, x, ValueType(1.0));
@@ -142,8 +144,8 @@ void multilevel<MatrixType,SetupPolicy,SolvePolicy>
     }
 }
 
-template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
-void multilevel<MatrixType,SetupPolicy,SolvePolicy>
+template <typename MatrixType, typename SetupPolicy, typename CyclePolicy>
+void multilevel<MatrixType,SetupPolicy,CyclePolicy>
 ::print(void)
 {
     size_t num_levels = levels.size();
@@ -167,8 +169,8 @@ void multilevel<MatrixType,SetupPolicy,SolvePolicy>
     }
 }
 
-template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
-double multilevel<MatrixType,SetupPolicy,SolvePolicy>
+template <typename MatrixType, typename SetupPolicy, typename CyclePolicy>
+double multilevel<MatrixType,SetupPolicy,CyclePolicy>
 ::operator_complexity(void)
 {
     size_t nnz = 0;
@@ -179,8 +181,8 @@ double multilevel<MatrixType,SetupPolicy,SolvePolicy>
     return (double) nnz / (double) levels[0].A.num_entries;
 }
 
-template <typename MatrixType, typename SetupPolicy, typename SolvePolicy>
-double multilevel<MatrixType,SetupPolicy,SolvePolicy>
+template <typename MatrixType, typename SetupPolicy, typename CyclePolicy>
+double multilevel<MatrixType,SetupPolicy,CyclePolicy>
 ::grid_complexity(void)
 {
     size_t unknowns = 0;

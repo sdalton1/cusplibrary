@@ -73,13 +73,15 @@ public:
 
         template<typename SaLevelType>
         sa_level(const SaLevelType& sa_level)
-            : A_(sa_level.A_), aggregates(sa_level.aggregates), B(sa_level.B), rho_DinvA(sa_level.rho_DinvA) {}
+            : aggregates(sa_level.aggregates), B(sa_level.B), rho_DinvA(sa_level.rho_DinvA) {}
     };
 
-    std::vector<sa_level> sa_levels;
+    ValueType omega;
     SetupMatrixType A_; // matrix
+    std::vector<sa_level> sa_levels;
 
-    void extend_hierarchy(void)
+    template<typename MatrixType2>
+    void extend_hierarchy(MatrixType2& lvl_R, MatrixType2& lvl_A, MatrixType2& lvl_P)
     {
         CUSP_PROFILE_SCOPED();
 
@@ -88,7 +90,7 @@ public:
             // compute stength of connection matrix
             ValueType theta = 0;
             SetupMatrixType C;
-            cusp::precond::aggregation::symmetric_strength_of_connection(A, C, theta);
+            cusp::precond::aggregation::symmetric_strength_of_connection(A_, C, theta);
 
             // compute aggregates
             aggregates.resize(C.num_rows);
@@ -105,7 +107,7 @@ public:
 
             // compute prolongation operator
             ValueType rho_DinvA = 0;
-            cusp::precond::aggregation::smooth_prolongator(A, T, P, omega, rho_DinvA);
+            cusp::precond::aggregation::smooth_prolongator(A_, T, P, omega, rho_DinvA);
         }
 
         // compute restriction operator (transpose of prolongator)
@@ -114,23 +116,19 @@ public:
 
         // construct Galerkin product R*A*P
         SetupMatrixType RAP;
-        MatrixType AP;
-        cusp::multiply(A, P, AP);
+        SetupMatrixType AP;
+        cusp::multiply(A_, P, AP);
         cusp::multiply(R, AP, RAP);
 
-        sa_levels.back().aggregates.swap(aggregates);
-        levels.back().R = R;
-        levels.back().P = P;
-
-        levels.push_back(level());
-        sa_levels.push_back(sa_level<SetupMatrixType>());
+        lvl_R = R;
+        lvl_P = P;
+        lvl_A = RAP;
 
         A_.swap(RAP);
-        sa_levels.back().B.swap(B_coarse);
-    }
 
-    void initialize_solve(void)
-    {
+        sa_levels.back().aggregates.swap(aggregates);
+        sa_levels.push_back(sa_level());
+        sa_levels.back().B.swap(B_coarse);
     }
 };
 /*! \}

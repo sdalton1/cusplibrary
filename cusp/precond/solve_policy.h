@@ -21,61 +21,24 @@ namespace cusp
 namespace precond
 {
 
-template <typename SmootherPolicy, typename SolverPolicy>
-class v_cycle_policy
-  : private SmootherPolicy, private SolverPolicy
+template<typename ValueType>
+class lu_solve_policy
 {
-    typedef typename SmootherPolicy::value_type ValueType;
-    typedef SmootherPolicy smoother_policy;
-    typedef SolverPolicy   solver_policy;
-
+private:
+    cusp::array2d<ValueType,cusp::host_memory> A;
+    cusp::array1d<int,cusp::host_memory>       pivot;
     cusp::array1d<ValueType,cusp::host_memory> temp_x;
     cusp::array1d<ValueType,cusp::host_memory> temp_b;
 
-    using solver_policy::coarse_solve;
-    using smoother_policy::presmooth;
-    using smoother_policy::postsmooth;
+public:
 
-    template<typename Array1, typename Array2>
-    void cycle(const Array1& b, Array2& x, const size_t i);
-};
+    lu_solve_policy() {}
 
-template <typename SmootherPolicy, typename SolverPolicy>
-class w_cycle_policy
-  : private SmootherPolicy, private SolverPolicy
-{
-    typedef typename SmootherPolicy::value_type ValueType;
-    typedef SmootherPolicy smoother_policy;
-    typedef SolverPolicy   solver_policy;
+    template <typename MatrixType>
+    lu_solve_policy(const MatrixType& A_);
 
-    cusp::array1d<ValueType,cusp::host_memory> temp_x;
-    cusp::array1d<ValueType,cusp::host_memory> temp_b;
-
-    using solver_policy::coarse_solve;
-    using smoother_policy::presmooth;
-    using smoother_policy::postsmooth;
-
-    template<typename Array1, typename Array2>
-    void cycle(const Array1& b, Array2& x, const size_t i);
-};
-
-template <typename SmootherPolicy, typename SolverPolicy>
-class f_cycle_policy
-  : private SmootherPolicy, private SolverPolicy
-{
-    typedef typename SmootherPolicy::value_type ValueType;
-    typedef SmootherPolicy smoother_policy;
-    typedef SolverPolicy   solver_policy;
-
-    cusp::array1d<ValueType,cusp::host_memory> temp_x;
-    cusp::array1d<ValueType,cusp::host_memory> temp_b;
-
-    using solver_policy::coarse_solve;
-    using smoother_policy::presmooth;
-    using smoother_policy::postsmooth;
-
-    template<typename Array1, typename Array2>
-    void cycle(const Array1& b, Array2& x, const size_t i);
+    template <typename VectorType1, typename VectorType2>
+    void coarse_solve(VectorType1& b, VectorType2& x);
 };
 
 } // end namespace precond

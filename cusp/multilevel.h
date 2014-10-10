@@ -32,7 +32,7 @@ namespace cusp
 namespace detail
 {
 // Forward definition
-template<typename MatrixType, typename SetupPolicy, typename SolvePolicy> struct multilevel_policy;
+template<typename MatrixType, typename SetupPolicy, typename CyclePolicy> struct multilevel_policy;
 } // end namespace detail
 
 /*! \addtogroup iterative_solvers Multilevel hiearchy
@@ -47,10 +47,10 @@ template<typename MatrixType, typename SetupPolicy, typename SolvePolicy> struct
  */
 template <typename MatrixType,
           typename SetupPolicy = thrust::use_default,
-          typename SolvePolicy = thrust::use_default>
+          typename CyclePolicy = thrust::use_default>
 class multilevel :
-  private detail::multilevel_policy<MatrixType,SetupPolicy,SolvePolicy>::setup_policy,
-  private detail::multilevel_policy<MatrixType,SetupPolicy,SolvePolicy>::solve_policy,
+  private detail::multilevel_policy<MatrixType,SetupPolicy,CyclePolicy>::setup_policy,
+  private detail::multilevel_policy<MatrixType,SetupPolicy,CyclePolicy>::cycle_policy,
   public cusp::linear_operator<typename MatrixType::value_type, typename MatrixType::memory_space>
 {
 public:
@@ -59,12 +59,12 @@ public:
     typedef typename MatrixType::value_type ValueType;
     typedef typename MatrixType::memory_space MemorySpace;
 
-    typedef typename detail::multilevel_policy<MatrixType,SetupPolicy,SolvePolicy>::setup_policy setup_policy;
-    typedef typename detail::multilevel_policy<MatrixType,SetupPolicy,SolvePolicy>::solve_policy solve_policy;
+    typedef typename detail::multilevel_policy<MatrixType,SetupPolicy,CyclePolicy>::setup_policy setup_policy;
+    typedef typename detail::multilevel_policy<MatrixType,SetupPolicy,CyclePolicy>::cycle_policy cycle_policy;
 
     using setup_policy::extend_hierarchy;
-    using solve_policy::initialize_solve;
-    using solve_policy::cycle;
+    using cycle_policy::initialize_solve;
+    using cycle_policy::cycle;
 
     struct level
     {
@@ -73,6 +73,10 @@ public:
         MatrixType P;  // prolongation operator
 
         level() {}
+
+        cusp::array1d<ValueType,MemorySpace> x;
+        cusp::array1d<ValueType,MemorySpace> b;
+        cusp::array1d<ValueType,MemorySpace> residual;
 
         template<typename LevelType>
         level(const LevelType& L) : R(L.R), A(L.A), P(L.P) {}
@@ -89,7 +93,7 @@ public:
     multilevel(const MatrixType& A, const size_t max_levels = 10, const size_t min_level_size = 100);
 
     template<typename MatrixType2>
-    multilevel(const multilevel<MatrixType2, SetupPolicy, SolvePolicy>& M);
+    multilevel(const multilevel<MatrixType2, SetupPolicy, CyclePolicy>& M);
 
     template <typename Array1, typename Array2>
     void operator()(const Array1& x, Array2& y);
