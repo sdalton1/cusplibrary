@@ -30,9 +30,6 @@ class jacobi_smoother_policy
   public:
     typedef cusp::relaxation::jacobi<ValueType,MemorySpace> SmootherType;
 
-    template<typename LevelType>
-    void generate_smoother(const LevelType& level, const ValueType omega);
-
     template<typename MatrixType, typename VectorType1, typename VectorType2>
     void presmooth(const MatrixType& A, const VectorType1& b, VectorType2& x, const size_t i);
 
@@ -45,9 +42,6 @@ class polynomial_smoother_policy
 {
   public:
     typedef cusp::relaxation::polynomial<ValueType,MemorySpace> SmootherType;
-
-    template<typename LevelType>
-    void generate_smoother(const LevelType& level);
 
     template<typename MatrixType, typename VectorType1, typename VectorType2>
     void presmooth(const MatrixType& A, const VectorType1& b, VectorType2& x, const size_t i);

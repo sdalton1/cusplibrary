@@ -68,7 +68,7 @@ multilevel<MatrixType,SetupPolicy,CyclePolicy>
     do
     {
         // create container to store next level
-        levels.push_back(level());
+        levels.push_back(setup_level());
 
         // construct level
         extend_hierarchy(levels.back().R, levels.back().A, levels.back().P);

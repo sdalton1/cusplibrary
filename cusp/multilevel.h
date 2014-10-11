@@ -67,28 +67,27 @@ public:
     using cycle_policy::cycle_initialize;
     using cycle_policy::cycle;
 
-    struct level
+    struct setup_level
     {
         MatrixType R;  // restriction operator
         MatrixType A;  // matrix
         MatrixType P;  // prolongation operator
 
-        level() {}
+        setup_level() {}
 
         cusp::array1d<ValueType,MemorySpace> x;
         cusp::array1d<ValueType,MemorySpace> b;
         cusp::array1d<ValueType,MemorySpace> residual;
 
         template<typename LevelType>
-        level(const LevelType& L) : R(L.R), A(L.A), P(L.P),
-                                    x(L.x), b(L.b), residual(L.residual) {}
+        setup_level(const LevelType& L) : R(L.R), A(L.A), P(L.P) {}
     };
 
     const MatrixType * A;
     const size_t max_levels;
     const size_t min_level_size;
 
-    std::vector<level> levels;
+    std::vector<setup_level> levels;
 
     multilevel() : max_levels(0), min_level_size(0) {};
 

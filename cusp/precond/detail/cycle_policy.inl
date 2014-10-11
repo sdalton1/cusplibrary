@@ -32,12 +32,12 @@ class v_cycle_policy
         if (i + 1 == levels.size())
         {
             // coarse grid solve
-            coarse_solve(levels[i].b, levels[i].x);
+            // coarse_solve(levels[i].b, levels[i].x);
         }
         else
         {
             // presmooth
-            presmooth(levels[i].A, levels[i].b, levels[i].x, i);
+            // presmooth(levels[i].A, levels[i].b, levels[i].x, i);
 
             // compute residual <- b - A*x
             cusp::multiply(levels[i].A, levels[i].x, levels[i].residual);
@@ -54,7 +54,7 @@ class v_cycle_policy
             cusp::blas::axpy(levels[i].residual, levels[i].x, 1.0);
 
             // postsmooth
-            postsmooth(levels[i].A, levels[i].b, levels[i].x, i);
+            // postsmooth(levels[i].A, levels[i].b, levels[i].x, i);
         }
     }
 };

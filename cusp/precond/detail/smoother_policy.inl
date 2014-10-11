@@ -25,14 +25,6 @@ namespace precond
 {
 
 template <typename ValueType, typename MemorySpace>
-template <typename LevelType>
-void jacobi_smoother_policy<ValueType,MemorySpace>
-::generate_smoother(const LevelType& level, const ValueType omega)
-{
-    jacobi_smoothers.push_back(SmootherType(level.A,omega));
-}
-
-template <typename ValueType, typename MemorySpace>
 template<typename MatrixType, typename VectorType1, typename VectorType2>
 void jacobi_smoother_policy<ValueType,MemorySpace>
 ::presmooth(const MatrixType& A, const VectorType1& b, VectorType2& x, const size_t i)
@@ -54,14 +46,6 @@ void jacobi_smoother_policy<ValueType,MemorySpace>
     CUSP_PROFILE_SCOPED();
 
     jacobi_smoothers[i](A, b, x);
-}
-
-template <typename ValueType, typename MemorySpace>
-template <typename LevelType>
-void polynomial_smoother_policy<ValueType,MemorySpace>
-::generate_smoother(const LevelType& level)
-{
-    polynomial_smoothers.push_back(SmootherType(level.A));
 }
 
 template <typename ValueType, typename MemorySpace>

@@ -32,10 +32,10 @@ struct select_cycle_type_policy {
     typedef typename cusp::precond::v_cycle_policy VCyclePolicy;
 
     typedef typename thrust::detail::eval_if<
-      thrust::detail::is_same<CycleTypePolicy,thrust::use_default>::value,
-      thrust::detail::identity_<VCyclePolicy>,
-      thrust::detail::identity_<CycleTypePolicy>
-    >::type type;
+    thrust::detail::is_same<CycleTypePolicy,thrust::use_default>::value,
+           thrust::detail::identity_<VCyclePolicy>,
+           thrust::detail::identity_<CycleTypePolicy>
+           >::type type;
 };
 
 template<typename ValueType, typename MemorySpace, typename SmootherPolicy>
@@ -44,10 +44,10 @@ struct select_smoother_policy {
     typedef typename cusp::precond::jacobi_smoother_policy<ValueType,MemorySpace> JacobiSmootherPolicy;
 
     typedef typename thrust::detail::eval_if<
-      thrust::detail::is_same<SmootherPolicy,thrust::use_default>::value,
-      thrust::detail::identity_<JacobiSmootherPolicy>,
-      thrust::detail::identity_<SmootherPolicy>
-    >::type type;
+    thrust::detail::is_same<SmootherPolicy,thrust::use_default>::value,
+           thrust::detail::identity_<JacobiSmootherPolicy>,
+           thrust::detail::identity_<SmootherPolicy>
+           >::type type;
 };
 
 template<typename ValueType, typename SolverPolicy>
@@ -56,23 +56,23 @@ struct select_solve_policy {
     typedef typename cusp::precond::lu_solve_policy<ValueType> LuSolvePolicy;
 
     typedef typename thrust::detail::eval_if<
-      thrust::detail::is_same<SolverPolicy,thrust::use_default>::value,
-      thrust::detail::identity_<LuSolvePolicy>,
-      thrust::detail::identity_<SolverPolicy>
-    >::type type;
+    thrust::detail::is_same<SolverPolicy,thrust::use_default>::value,
+           thrust::detail::identity_<LuSolvePolicy>,
+           thrust::detail::identity_<SolverPolicy>
+           >::type type;
 };
 
 template <typename ValueType,
-          typename MemorySpace,
-          typename CycleTypePolicy = thrust::use_default,
-          typename SmootherPolicy  = thrust::use_default,
-          typename SolvePolicy     = thrust::use_default>
+         typename MemorySpace,
+         typename CycleTypePolicy = thrust::use_default,
+         typename SmootherPolicy  = thrust::use_default,
+         typename SolvePolicy     = thrust::use_default>
 class cycle_policy :
-  private select_cycle_type_policy<ValueType,MemorySpace,CycleTypePolicy>::type,
-  private select_smoother_policy<ValueType,MemorySpace,SmootherPolicy>::type,
-  private select_solve_policy<ValueType,SolvePolicy>::type
+    private select_cycle_type_policy<ValueType,MemorySpace,CycleTypePolicy>::type,
+    private select_smoother_policy<ValueType,MemorySpace,SmootherPolicy>::type,
+    private select_solve_policy<ValueType,SolvePolicy>::type
 {
-    protected:
+protected:
 
     typedef typename select_cycle_type_policy<ValueType,MemorySpace,CycleTypePolicy>::type   cycle_type_policy;
     typedef typename select_smoother_policy<ValueType,MemorySpace,SmootherPolicy>::type      smoother_policy;
@@ -81,22 +81,40 @@ class cycle_policy :
     typedef typename smoother_policy::SmootherType                                           SmootherType;
 
     using cycle_type_policy::cycle;
-    using smoother_policy::presmooth;
-    using smoother_policy::postsmooth;
-
     using solve_policy::coarse_initialize;
     using solve_policy::coarse_solve;
 
-    std::vector<SmootherType> smoothers;
-
-    template<typename Levels>
-    void cycle_initialize(const Levels& levels)
+    struct cycle_level
     {
-      for(int i = 0; i < levels.size(); i++) {
-        smoothers.push_back(SmootherType(levels[i].A));
-      }
+        cycle_level() {}
 
-      coarse_initialize(levels.back().A);
+        cusp::array1d<ValueType,MemorySpace> x;
+        cusp::array1d<ValueType,MemorySpace> b;
+        cusp::array1d<ValueType,MemorySpace> residual;
+
+        SmootherType                         smoother;
+
+        template<typename LevelType>
+        cycle_level(const LevelType& L) : x(L.x), b(L.b), residual(L.residual) {}
+    };
+
+    std::vector<cycle_level> cycle_levels;
+
+    template<typename SetupLevels>
+    void cycle_initialize(const SetupLevels& setup_levels)
+    {
+        for(int i = 0; i < setup_levels.size(); i++)
+        {
+            cycle_levels.push_back(cycle_level());
+            cycle_levels.back().smoother = SmootherType(setup_levels[i].A);
+
+            int N = setup_levels[i].A.num_rows;
+            cycle_levels.back().x.resize(N);
+            cycle_levels.back().b.resize(N);
+            cycle_levels.back().residual.resize(N);
+        }
+
+        coarse_initialize(setup_levels.back().A);
     }
 };
 
