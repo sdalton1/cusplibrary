@@ -235,8 +235,10 @@ spmv_coo_flat_kernel(const IndexType num_nonzeros,
                      IndexType * temp_rows,
                      ValueType * temp_vals)
 {
+    typedef typename cusp::complex_volatile_type<ValueType>::type SValueType;
+
     __shared__ volatile IndexType rows[48 *(BLOCK_SIZE/32)];
-    __shared__ volatile ValueType vals[BLOCK_SIZE];
+    __shared__ SValueType vals[BLOCK_SIZE];
 
     const IndexType thread_id   = BLOCK_SIZE * blockIdx.x + threadIdx.x;                         // global thread index
     const IndexType thread_lane = threadIdx.x & (WARP_SIZE-1);                                   // thread index within the warp
@@ -256,13 +258,13 @@ spmv_coo_flat_kernel(const IndexType num_nonzeros,
     {
         // initialize the carry in values
         rows[idx] = I[interval_begin];
-        vals[threadIdx.x] = ValueType(0);
+        vals[threadIdx.x] = SValueType(0);
     }
 
     for(IndexType n = interval_begin + thread_lane; n < interval_end; n += WARP_SIZE)
     {
         IndexType row = I[n];                                         // row index (i)
-        ValueType val = V[n] * fetch_x<UseCache>(J[n], x);            // A(i,j) * x(j)
+        SValueType val = V[n] * fetch_x<UseCache>(J[n], x);           // A(i,j) * x(j)
 
         if (thread_lane == 0)
         {

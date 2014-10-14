@@ -53,7 +53,6 @@ namespace device
 //
 //  Note: THREADS_PER_VECTOR must be one of [2,4,8,16,32]
 
-
 template <typename IndexType, typename ValueType, unsigned int VECTORS_PER_BLOCK, unsigned int THREADS_PER_VECTOR, bool UseCache>
 __launch_bounds__(VECTORS_PER_BLOCK * THREADS_PER_VECTOR,1)
 __global__ void
@@ -64,7 +63,9 @@ spmv_csr_vector_kernel(const IndexType num_rows,
                        const ValueType * x,
                        ValueType * y)
 {
-    __shared__ volatile ValueType sdata[VECTORS_PER_BLOCK * THREADS_PER_VECTOR + THREADS_PER_VECTOR / 2];  // padded to avoid reduction conditionals
+    typedef typename cusp::complex_volatile_type<ValueType>::type SValueType;
+
+    __shared__ SValueType sdata[VECTORS_PER_BLOCK * THREADS_PER_VECTOR + THREADS_PER_VECTOR / 2];  // padded to avoid reduction conditionals
     __shared__ volatile IndexType ptrs[VECTORS_PER_BLOCK][2];
 
     const IndexType THREADS_PER_BLOCK = VECTORS_PER_BLOCK * THREADS_PER_VECTOR;
@@ -86,7 +87,7 @@ spmv_csr_vector_kernel(const IndexType num_rows,
         const IndexType row_end   = ptrs[vector_lane][1];                   //same as: row_end   = Ap[row+1];
 
         // initialize local sum
-        ValueType sum = 0;
+        SValueType sum;
 
         if (THREADS_PER_VECTOR == 32 && row_end - row_start > 32)
         {
@@ -120,8 +121,9 @@ spmv_csr_vector_kernel(const IndexType num_rows,
         if (THREADS_PER_VECTOR >  1) sdata[threadIdx.x] = sum = sum + sdata[threadIdx.x +  1];
 
         // first thread writes the result
-        if (thread_lane == 0)
-            y[row] = sdata[threadIdx.x];
+        if (thread_lane == 0) {
+            y[row] = (ValueType) sdata[threadIdx.x];
+        }
     }
 }
 

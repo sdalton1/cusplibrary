@@ -52,5 +52,19 @@ T l2_error(size_t N, const T * a, const T * b)
     return numerator/denominator;
 }
 
+template <typename T>
+T l2_error(size_t N, const cusp::complex<T> * a, const cusp::complex<T> * b)
+{
+    T numerator   = 0;
+    T denominator = 0;
+    for(size_t i = 0; i < N; i++)
+    {
+        numerator   += (a[i].real() - b[i].real()) * (a[i].real() - b[i].real());
+        denominator += (b[i].real() * b[i].real());
+    }
+
+    return numerator/denominator;
+}
+
 
 

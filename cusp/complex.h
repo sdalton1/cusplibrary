@@ -36,9 +36,15 @@ template <typename T> struct complex : public thrust::complex<T>
 public:
     typedef typename thrust::complex<T> Parent;
 
+    template<typename V>
     inline __host__ __device__
-    complex(const T & re = T(), const T& im = T()) : Parent(re,im) {};
+    complex(const V & re = V(), const V & im = V(),
+            typename thrust::detail::enable_if<thrust::detail::is_convertible<typename thrust::detail::remove_volatile<T>::type,V>::value>::type* = 0)
+            : Parent(T(re),T(im)) {};
 
+    // inline __host__ __device__
+    // complex(const T & re = T(), const T & im = T()) : Parent(re,im) {};
+    //
     inline __host__ __device__
     complex(const thrust::complex<T>& z) : Parent(z) {};
 
@@ -54,6 +60,16 @@ struct norm_type {
 template <typename T>
 struct norm_type< cusp::complex<T> > {
     typedef T type;
+};
+
+template<typename T>
+struct complex_volatile_type {
+  typedef volatile typename cusp::norm_type<T>::type V;
+  typedef typename thrust::detail::eval_if<
+    thrust::detail::is_floating_point<T>::value,
+    thrust::detail::identity_<V>,
+    thrust::detail::identity_<cusp::complex<V> >
+  >::type type;
 };
 
 } // end namespace cusp
