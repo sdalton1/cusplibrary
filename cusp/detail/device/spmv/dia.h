@@ -152,20 +152,26 @@ void __spmv_dia(const Matrix& A,
 
 template <typename Matrix,
           typename Array1,
-          typename Array2>
+          typename Array2,
+          typename ScalarType>
 void spmv_dia(const Matrix& A,
-              const Array1&  x,
-                    Array2& y)
+              const Array1& x,
+                    Array2& y,
+              const ScalarType alpha,
+              const ScalarType beta)
 {
     __spmv_dia<false>(A, x, y);
 }
 
 template <typename Matrix,
           typename Array1,
-          typename Array2>
+          typename Array2,
+          typename ScalarType>
 void spmv_dia_tex(const Matrix& A,
-                  const Array1&  x,
-                        Array2& y)
+                  const Array1& x,
+                        Array2& y,
+                  const ScalarType alpha,
+                  const ScalarType beta)
 {
     __spmv_dia<true>(A, x, y);
 }

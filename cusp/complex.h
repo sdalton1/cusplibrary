@@ -30,29 +30,13 @@
 
 namespace cusp
 {
-
-template <typename T> struct complex : public thrust::complex<T>
-{
-public:
-    typedef typename thrust::complex<T> Parent;
-
-    inline __host__ __device__
-    complex(const T & re = T(), const T& im = T()) : Parent(re,im) {};
-
-    inline __host__ __device__
-    complex(const thrust::complex<T>& z) : Parent(z) {};
-
-    inline __host__
-    complex(const std::complex<T>& z) : Parent(z) {};
-};
-
 template <typename T>
 struct norm_type {
     typedef T type;
 };
 
 template <typename T>
-struct norm_type< cusp::complex<T> > {
+struct norm_type< thrust::complex<T> > {
     typedef T type;
 };
 

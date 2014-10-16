@@ -155,10 +155,13 @@ void __spmv_csr_vector(const Matrix& A,
 
 template <typename Matrix,
           typename Array1,
-          typename Array2>
+          typename Array2,
+          typename ScalarType>
 void spmv_csr_vector(const Matrix& A,
                      const Array1&  x,
-                           Array2& y)
+                           Array2& y,
+                     const ScalarType& alpha,
+                     const ScalarType& beta)
 {
     typedef typename Matrix::index_type IndexType;
 
@@ -186,10 +189,13 @@ void spmv_csr_vector(const Matrix& A,
 
 template <typename Matrix,
           typename Array1,
-          typename Array2>
+          typename Array2,
+          typename ScalarType>
 void spmv_csr_vector_tex(const Matrix& A,
-                         const Array1&  x,
-                               Array2& y)
+                         const Array1& x,
+                               Array2& y,
+                         const ScalarType& alpha,
+                         const ScalarType& beta)
 {
     typedef typename Matrix::index_type IndexType;
 

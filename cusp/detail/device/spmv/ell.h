@@ -111,20 +111,26 @@ void __spmv_ell(const Matrix& A,
 
 template <typename Matrix,
          typename Array1,
-         typename Array2>
+         typename Array2,
+         typename ScalarType>
 void spmv_ell(const Matrix& A,
               const Array1& x,
-                    Array2& y)
+                    Array2& y,
+              const ScalarType alpha,
+              const ScalarType beta)
 {
     __spmv_ell<false>(A, x, y);
 }
 
 template <typename Matrix,
          typename Array1,
-         typename Array2>
+         typename Array2,
+         typename ScalarType>
 void spmv_ell_tex(const Matrix& A,
                   const Array1& x,
-                        Array2& y)
+                        Array2& y,
+                  const ScalarType alpha,
+                  const ScalarType beta)
 {
     __spmv_ell<true>(A, x, y);
 }

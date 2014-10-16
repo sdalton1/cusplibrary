@@ -18,7 +18,7 @@
 #pragma once
 
 #include <cusp/detail/device/spmv/ell.h>
-#include <cusp/detail/device/spmv/coo_flat.h>
+#include <cusp/detail/device/spmv/coo.h>
 
 namespace cusp
 {
@@ -27,22 +27,26 @@ namespace detail
 namespace device
 {
 
-template <typename Matrix, typename Array1, typename Array2>
+template <typename Matrix, typename Array1, typename Array2, typename ScalarType>
 void spmv_hyb(const Matrix&   A,
               const Array1&   x,
-                    Array2&   y)
+                    Array2&   y,
+              const ScalarType& alpha,
+              const ScalarType& beta)
 {
-    spmv_ell(A.ell, x, y);
-    __spmv_coo_flat<false, false>(A.coo, x, y);
+    spmv_ell(A.ell, x, y, alpha, beta);
+    spmv_coo(A.coo, x, y, alpha, ScalarType(1));
 }
 
-template <typename Matrix, typename Array1, typename Array2>
+template <typename Matrix, typename Array1, typename Array2, typename ScalarType>
 void spmv_hyb_tex(const Matrix&   A,
                   const Array1&   x,
-                        Array2&   y)
+                        Array2&   y,
+                  const ScalarType& alpha,
+                  const ScalarType& beta)
 {
-    spmv_ell_tex(A.ell, x, y);
-    __spmv_coo_flat<true, false>(A.coo, x, y);
+    spmv_ell_tex(A.ell, x, y, alpha, beta);
+    spmv_coo(A.coo, x, y, alpha, ScalarType(1));
 }
 
 } // end namespace device

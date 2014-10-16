@@ -20,7 +20,7 @@
 #include <cusp/coo_matrix.h>
 
 // SpMV
-#include <cusp/detail/device/spmv/coo_flat.h>
+#include <cusp/detail/device/spmv/coo.h>
 #include <cusp/detail/device/spmv/csr_vector.h>
 #include <cusp/detail/device/spmv/dia.h>
 #include <cusp/detail/device/spmv/ell.h>
@@ -65,11 +65,7 @@ void multiply(const Matrix&  A,
               cusp::array1d_format,
               cusp::array1d_format)
 {
-#ifdef CUSP_USE_TEXTURE_MEMORY
-    cusp::detail::device::spmv_coo_flat_tex(A, B, C);
-#else
-    cusp::detail::device::spmv_coo_flat(A, B, C);
-#endif
+    cusp::detail::device::spmv_coo(A, B, C);
 }
 
 template <typename Matrix,
@@ -144,21 +140,21 @@ void multiply(const Matrix&  A,
 // Sparse Matrix-BlockVector Multiply //
 ////////////////////////////////////////
 //// TODO specialize
-template <typename Matrix,
-         typename Vector1,
-         typename Vector2>
-void multiply(const Matrix&  A,
-              const Vector1& B,
-              Vector2& C,
-              cusp::sparse_format,
-              cusp::array2d_format,
-              cusp::array2d_format,
-              cusp::column_major,
-              cusp::column_major)
-{
-    for( size_t j = 0; j < B.num_cols; j++ )
-        cusp::multiply(A, B.column(j), C.column(j));
-}
+// template <typename Matrix,
+//          typename Vector1,
+//          typename Vector2>
+// void multiply(const Matrix&  A,
+//               const Vector1& B,
+//               Vector2& C,
+//               cusp::sparse_format,
+//               cusp::array2d_format,
+//               cusp::array2d_format,
+//               cusp::column_major,
+//               cusp::column_major)
+// {
+//     for( size_t j = 0; j < B.num_cols; j++ )
+//         cusp::multiply(A, B.column(j), C.column(j));
+// }
 
 /////////////////////////////////
 // Permutation Matrix Multiply //

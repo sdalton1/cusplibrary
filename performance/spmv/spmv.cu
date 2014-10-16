@@ -113,6 +113,10 @@ int main(int argc, char** argv)
     {
         test_all_formats<int,float>(filename);
     }
+    else if (value_type == "complex_float")
+    {
+        test_all_formats<int,thrust::complex<float> >(filename);
+    }
     else if (value_type == "double")
     {
         int current_device = -1;

@@ -25,6 +25,8 @@
 
 #if THRUST_VERSION >= 100800
 #include <thrust/system/cuda/detail/cub.h>
+#else
+#include <cusp/detail/thrust/system/cuda/detail/cub.h>
 #endif
 
 // Note: Unlike the other kernels this kernel implements y += A*x
@@ -62,9 +64,7 @@ struct ReduceByKeyOp
     {
         PartialProduct retval;
 
-        retval.partial = (second.row != first.row) ?
-                second.partial :
-                first.partial + second.partial;
+        retval.partial = (second.row != first.row) ? second.partial : first.partial + second.partial;
 
         retval.row = second.row;
         return retval;
@@ -120,10 +120,10 @@ struct NewRowOp
  * sparse COO tiles.
  */
 template <
-    int             BLOCK_THREADS,
-    int             ITEMS_PER_THREAD,
-    typename        IndexType,
-    typename        ValueType>
+int             BLOCK_THREADS,
+                int             ITEMS_PER_THREAD,
+                typename        IndexType,
+                typename        ValueType>
 struct PersistentBlockSpmv
 {
     //---------------------------------------------------------------------
@@ -137,7 +137,7 @@ struct PersistentBlockSpmv
     };
 
     // Head flag type
-    typedef int HeadFlag;
+    typedef IndexType HeadFlag;
 
     // Partial dot product type
     typedef PartialProduct<IndexType, ValueType> PartialProduct;
@@ -178,7 +178,7 @@ struct PersistentBlockSpmv
 
         IndexType        first_block_row;    ///< The first row-ID seen by this thread block
         IndexType        last_block_row;     ///< The last row-ID seen by this thread block
-        ValueType           first_product;      ///< The first dot-product written by this thread block
+        ValueType        first_product;      ///< The first dot-product written by this thread block
     };
 
     //---------------------------------------------------------------------
@@ -215,7 +215,7 @@ struct PersistentBlockSpmv
         PartialProduct              *d_block_partials,
         int                         block_offset,
         int                         block_end)
-    :
+        :
         temp_storage(temp_storage),
         d_rows(d_rows),
         d_columns(d_columns),
@@ -277,7 +277,7 @@ struct PersistentBlockSpmv
         }
 
         // Load the referenced values from x and compute the dot product partials sums
-        #pragma unroll
+#pragma unroll
         for (int ITEM = 0; ITEM < ITEMS_PER_THREAD; ITEM++)
         {
             values[ITEM] *= ThreadLoad<LOAD_LDG>((ValueType*)d_vector + columns[ITEM]);
@@ -302,7 +302,7 @@ struct PersistentBlockSpmv
             prefix_op.running_prefix.row);  // Last row ID from previous tile to compare with first row ID in this tile
 
         // Assemble partial product structures
-        #pragma unroll
+#pragma unroll
         for (int ITEM = 0; ITEM < ITEMS_PER_THREAD; ITEM++)
         {
             partial_sums[ITEM].partial = values[ITEM];
@@ -313,7 +313,7 @@ struct PersistentBlockSpmv
         PartialProduct block_aggregate;
         PartialProduct identity;
         identity.row     = 0;
-        identity.partial = 0;
+        identity.partial = ValueType(0);
         BlockScan(temp_storage.scan).ExclusiveScan(
             partial_sums,                   // Scan input
             partial_sums,                   // Scan output
@@ -326,7 +326,7 @@ struct PersistentBlockSpmv
         __syncthreads();
 
         // Scatter an accumulated dot product if it is the head of a valid row
-        #pragma unroll
+#pragma unroll
         for (int ITEM = 0; ITEM < ITEMS_PER_THREAD; ITEM++)
         {
             if (head_flags[ITEM])
@@ -391,10 +391,10 @@ struct PersistentBlockSpmv
  * Threadblock abstraction for "fixing up" an array of interblock SpMV partial products.
  */
 template <
-    int             BLOCK_THREADS,
-    int             ITEMS_PER_THREAD,
-    typename        IndexType,
-    typename        ValueType>
+int             BLOCK_THREADS,
+                int             ITEMS_PER_THREAD,
+                typename        IndexType,
+                typename        ValueType>
 struct FinalizeSpmvBlock
 {
     //---------------------------------------------------------------------
@@ -408,7 +408,7 @@ struct FinalizeSpmvBlock
     };
 
     // Head flag type
-    typedef int HeadFlag;
+    typedef IndexType HeadFlag;
 
     // Partial dot product type
     typedef PartialProduct<IndexType, ValueType> PartialProduct;
@@ -453,7 +453,7 @@ struct FinalizeSpmvBlock
         ValueType                       *d_result,
         PartialProduct              *d_block_partials,
         int                         num_partials)
-    :
+        :
         temp_storage(temp_storage),
         d_result(d_result),
         d_block_partials(d_block_partials),
@@ -505,7 +505,7 @@ struct FinalizeSpmvBlock
         }
 
         // Copy out row IDs for row-head flagging
-        #pragma unroll
+#pragma unroll
         for (int ITEM = 0; ITEM < ITEMS_PER_THREAD; ITEM++)
         {
             rows[ITEM] = partial_sums[ITEM].row;
@@ -532,7 +532,7 @@ struct FinalizeSpmvBlock
             prefix_op);                     // Prefix operator for seeding the block-wide scan with the running total
 
         // Scatter an accumulated dot product if it is the head of a valid row
-        #pragma unroll
+#pragma unroll
         for (int ITEM = 0; ITEM < ITEMS_PER_THREAD; ITEM++)
         {
             if (head_flags[ITEM])
@@ -576,10 +576,10 @@ struct FinalizeSpmvBlock
  * Kernel for "fixing up" an array of interblock SpMV partial products.
  */
 template <
-    int                             BLOCK_THREADS,
-    int                             ITEMS_PER_THREAD,
-    typename                        IndexType,
-    typename                        ValueType>
+int                             BLOCK_THREADS,
+                                int                             ITEMS_PER_THREAD,
+                                typename                        IndexType,
+                                typename                        ValueType>
 __launch_bounds__ (BLOCK_THREADS,  1)
 __global__ void CooFinalizeKernel(
     PartialProduct<IndexType, ValueType> *d_block_partials,
@@ -603,10 +603,10 @@ __global__ void CooFinalizeKernel(
  * SpMV kernel whose thread blocks each process a contiguous segment of sparse COO tiles.
  */
 template <
-    int       BLOCK_THREADS,
-    int       ITEMS_PER_THREAD,
-    typename  IndexType,
-    typename  ValueType>
+int       BLOCK_THREADS,
+          int       ITEMS_PER_THREAD,
+          typename  IndexType,
+          typename  ValueType>
 __launch_bounds__ (BLOCK_THREADS)
 __global__ void CooKernel(
     cub::GridEvenShare<int>              even_share,
@@ -643,13 +643,14 @@ __global__ void CooKernel(
 }
 
 template <typename Matrix,
-          typename Array1,
-          typename Array2>
+         typename Array1,
+         typename Array2,
+         typename ScalarType>
 void spmv_coo(const Matrix& A,
               const Array1& x,
-                    Array2& y,
-              const typename Matrix::value_type alpha = 1,
-              const typename Matrix::value_type beta  = 0)
+              Array2& y,
+              const ScalarType alpha,
+              const ScalarType beta)
 {
     using namespace cub;
     using namespace thrust::system::cuda::detail;
@@ -661,48 +662,51 @@ void spmv_coo(const Matrix& A,
     // Parameterization for SM35
     enum
     {
-        COO_BLOCK_THREADS           = 64,
-        COO_ITEMS_PER_THREAD        = 10,
-        COO_SUBSCRIPTION_FACTOR     = 4,
-        FINALIZE_BLOCK_THREADS      = 256,
-        FINALIZE_ITEMS_PER_THREAD   = 4,
+        BLOCK_THREADS             = 128,
+        ITEMS_PER_THREAD          = sizeof(ValueType) > 8 ? 3 : 6,
+        SUBSCRIPTION_FACTOR       = 4,
+        FINALIZE_BLOCK_THREADS    = 256,
+        FINALIZE_ITEMS_PER_THREAD = 4,
     };
 
-    const int COO_TILE_SIZE = COO_BLOCK_THREADS * COO_ITEMS_PER_THREAD;
+    const int TILE_SIZE = BLOCK_THREADS * ITEMS_PER_THREAD;
 
     // Create SOA version of coo_graph on host
     int num_edges = A.num_entries;
 
-    int max_coo_grid_size = cusp::detail::device::arch::max_active_blocks(
-                                CooKernel<COO_BLOCK_THREADS, COO_ITEMS_PER_THREAD, IndexType, ValueType>,
-                                size_t(COO_BLOCK_THREADS), size_t(0)) * COO_SUBSCRIPTION_FACTOR;
-
-    if(beta == 0) cusp::blas::fill(y, ValueType(0));
-
-    // Construct an even-share work distribution
-    GridEvenShare<int> even_share(num_edges, max_coo_grid_size, COO_TILE_SIZE);
-    int coo_grid_size  = even_share.grid_size;
-    int num_partials   = coo_grid_size * 2;
-
-    cusp::array1d<Partial,cusp::device_memory> partials(num_partials);
-
-    // Run the COO kernel
-    CooKernel<COO_BLOCK_THREADS, COO_ITEMS_PER_THREAD><<<coo_grid_size, COO_BLOCK_THREADS>>>(
-        even_share,
-        partials.raw_data(),
-        A.row_indices.raw_data(),
-        A.column_indices.raw_data(),
-        A.values.raw_data(),
-        x.raw_data(),
-        y.raw_data());
-
-    if (coo_grid_size > 1)
+    if(num_edges > 0)
     {
-        // Run the COO finalize kernel
-        CooFinalizeKernel<FINALIZE_BLOCK_THREADS, FINALIZE_ITEMS_PER_THREAD><<<1, FINALIZE_BLOCK_THREADS>>>(
+        int max_coo_grid_size = cusp::detail::device::arch::max_active_blocks(
+                                    CooKernel<BLOCK_THREADS, ITEMS_PER_THREAD, IndexType, ValueType>,
+                                    size_t(BLOCK_THREADS), size_t(0)) * SUBSCRIPTION_FACTOR;
+
+        if(beta == ValueType(0)) cusp::blas::fill(y, ValueType(0));
+
+        // Construct an even-share work distribution
+        GridEvenShare<int> even_share(num_edges, max_coo_grid_size, TILE_SIZE);
+        int coo_grid_size = even_share.grid_size;
+        int num_partials  = coo_grid_size * 2;
+
+        cusp::array1d<Partial,cusp::device_memory> partials(num_partials);
+
+        // Run the COO kernel
+        CooKernel<BLOCK_THREADS, ITEMS_PER_THREAD><<<coo_grid_size, BLOCK_THREADS>>>(
+            even_share,
             partials.raw_data(),
-            num_partials,
+            A.row_indices.raw_data(),
+            A.column_indices.raw_data(),
+            A.values.raw_data(),
+            x.raw_data(),
             y.raw_data());
+
+        if (coo_grid_size > 1)
+        {
+            // Run the COO finalize kernel
+            CooFinalizeKernel<FINALIZE_BLOCK_THREADS, FINALIZE_ITEMS_PER_THREAD><<<1, FINALIZE_BLOCK_THREADS>>>(
+                partials.raw_data(),
+                num_partials,
+                y.raw_data());
+        }
     }
 }
 

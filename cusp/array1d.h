@@ -159,9 +159,11 @@ class array1d_view : public thrust::iterator_adaptor<array1d_view<Iterator>, Ite
     typedef typename super_t::value_type                                value_type;
     typedef typename super_t::pointer                                   pointer;
     typedef typename super_t::reference                                 reference;
-    typedef size_t                                                      size_type;
+    typedef typename super_t::difference_type                           size_type;
     typedef typename super_t::difference_type                           difference_type;
     typedef typename thrust::iterator_system<iterator>::type            memory_space;
+    typedef const    value_type*                                        const_pointer;
+    typedef const_pointer                                               const_iterator;
 
     array1d_view(void)
         : m_size(0), m_capacity(0) {}

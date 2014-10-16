@@ -102,20 +102,26 @@ void __spmv_csr_scalar(const Matrix&    A,
 
 template <typename Matrix,
          typename Array1,
-         typename Array2>
-void spmv_csr_scalar(const Matrix&    A,
+         typename Array2,
+         typename ScalarType>
+void spmv_csr_scalar(const Matrix& A,
                      const Array1& x,
-                           Array2& y)
+                           Array2& y,
+                     const ScalarType& alpha,
+                     const ScalarType& beta)
 {
     __spmv_csr_scalar<false>(A, x, y);
 }
 
 template <typename Matrix,
          typename Array1,
-         typename Array2>
-void spmv_csr_scalar_tex(const Matrix&    A,
+         typename Array2,
+         typename ScalarType>
+void spmv_csr_scalar_tex(const Matrix& A,
                          const Array1& x,
-                               Array2& y)
+                               Array2& y,
+                         const ScalarType& alpha,
+                         const ScalarType& beta)
 {
     __spmv_csr_scalar<true>(A, x, y);
 }

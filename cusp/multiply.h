@@ -88,7 +88,7 @@ template <typename LinearOperator,
          typename MatrixOrVector2>
 void multiply(const LinearOperator&  A,
               const MatrixOrVector1& B,
-              const MatrixOrVector2& C);
+              MatrixOrVector2& C);
 /*! \}
  */
 

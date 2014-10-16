@@ -51,8 +51,8 @@ typedef integral_constant<bool, false>    false_type;
 template<typename T> struct is_floating_point                                : public false_type {};
 template<>           struct is_floating_point<float>                         : public true_type {};
 template<>           struct is_floating_point<double>                        : public true_type {};
-template<>           struct is_floating_point< cusp::complex<float>  >       : public true_type {};
-template<>           struct is_floating_point< cusp::complex<double> >       : public true_type {};
+template<>           struct is_floating_point< thrust::complex<float>  >       : public true_type {};
+template<>           struct is_floating_point< thrust::complex<double> >       : public true_type {};
 
 template<typename T>
 struct type_wrapper

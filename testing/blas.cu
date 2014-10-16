@@ -254,29 +254,29 @@ DECLARE_HOST_DEVICE_UNITTEST(TestDot);
 template <class MemorySpace>
 void TestDotc(void)
 {
-    typedef typename cusp::array1d<cusp::complex<float>, MemorySpace>       Array;
-    typedef typename cusp::array1d<cusp::complex<float>, MemorySpace>::view View;
+    typedef typename cusp::array1d<thrust::complex<float>, MemorySpace>       Array;
+    typedef typename cusp::array1d<thrust::complex<float>, MemorySpace>::view View;
 
     Array x(6);
     Array y(6);
 
-    x[0] = cusp::complex<float>( 7.0f, 0.0f);
-    y[0] = cusp::complex<float>( 0.0f, 0.0f);
+    x[0] = thrust::complex<float>( 7.0f, 0.0f);
+    y[0] = thrust::complex<float>( 0.0f, 0.0f);
 
-    x[1] = cusp::complex<float>( 5.0f, 0.0f);
-    y[1] = cusp::complex<float>(-2.0f, 0.0f);
+    x[1] = thrust::complex<float>( 5.0f, 0.0f);
+    y[1] = thrust::complex<float>(-2.0f, 0.0f);
 
-    x[2] = cusp::complex<float>( 4.0f, 0.0f);
-    y[2] = cusp::complex<float>( 0.0f, 0.0f);
+    x[2] = thrust::complex<float>( 4.0f, 0.0f);
+    y[2] = thrust::complex<float>( 0.0f, 0.0f);
 
-    x[3] = cusp::complex<float>(-3.0f, 0.0f);
-    y[3] = cusp::complex<float>( 5.0f, 0.0f);
+    x[3] = thrust::complex<float>(-3.0f, 0.0f);
+    y[3] = thrust::complex<float>( 5.0f, 0.0f);
 
-    x[4] = cusp::complex<float>( 0.0f, 0.0f);
-    y[4] = cusp::complex<float>( 6.0f, 0.0f);
+    x[4] = thrust::complex<float>( 0.0f, 0.0f);
+    y[4] = thrust::complex<float>( 6.0f, 0.0f);
 
-    x[5] = cusp::complex<float>( 4.0f, 0.0f);
-    y[5] = cusp::complex<float>( 1.0f, 0.0f);
+    x[5] = thrust::complex<float>( 4.0f, 0.0f);
+    y[5] = thrust::complex<float>( 1.0f, 0.0f);
 
     ASSERT_EQUAL(cusp::blas::dotc(x, y), -21.0f);
 
@@ -343,8 +343,8 @@ DECLARE_HOST_DEVICE_UNITTEST(TestNrm1);
 template <class MemorySpace>
 void TestComplexNrm1(void)
 {
-    typedef typename cusp::array1d<cusp::complex<float>, MemorySpace>       Array;
-    typedef typename cusp::array1d<cusp::complex<float>, MemorySpace>::view View;
+    typedef typename cusp::array1d<thrust::complex<float>, MemorySpace>       Array;
+    typedef typename cusp::array1d<thrust::complex<float>, MemorySpace>::view View;
 
     Array x(6);
 
@@ -386,8 +386,8 @@ DECLARE_HOST_DEVICE_UNITTEST(TestNrm2);
 template <class MemorySpace>
 void TestComplexNrm2(void)
 {
-    typedef typename cusp::array1d<cusp::complex<float>, MemorySpace>       Array;
-    typedef typename cusp::array1d<cusp::complex<float>, MemorySpace>::view View;
+    typedef typename cusp::array1d<thrust::complex<float>, MemorySpace>       Array;
+    typedef typename cusp::array1d<thrust::complex<float>, MemorySpace>::view View;
 
     Array x(6);
 
@@ -430,8 +430,8 @@ DECLARE_HOST_DEVICE_UNITTEST(TestNrmmax);
 template <class MemorySpace>
 void TestComplexNrmmax(void)
 {
-    typedef typename cusp::array1d<cusp::complex<float>, MemorySpace>       Array;
-    typedef typename cusp::array1d<cusp::complex<float>, MemorySpace>::view View;
+    typedef typename cusp::array1d<thrust::complex<float>, MemorySpace>       Array;
+    typedef typename cusp::array1d<thrust::complex<float>, MemorySpace>::view View;
 
     Array x(6);
     View view_x(x);

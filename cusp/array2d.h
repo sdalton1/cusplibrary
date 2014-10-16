@@ -201,12 +201,12 @@ public:
         return column_view_type::get_array(*this, i);
     }
 
-    const_row_view row(size_t i) const
+    const_row_view crow(size_t i) const
     {
         return const_row_view_type::get_array(*this, i);
     }
 
-    const_column_view column(size_t i) const
+    const_column_view ccolumn(size_t i) const
     {
         return const_column_view_type::get_array(*this, i);
     }
@@ -253,13 +253,31 @@ public:
 
     /*! array1d_view of a single row
      */
-    typedef cusp::detail::row_or_column_view<typename values_array_type::iterator,thrust::detail::is_same<Orientation,cusp::row_major>::value> row_view_type;
+    typedef cusp::detail::row_or_column_view
+      <typename values_array_type::iterator,thrust::detail::is_same<Orientation,cusp::row_major>::value> row_view_type;
     typedef typename row_view_type::ArrayType row_view;
 
     /*! array1d_view of a single column
      */
-    typedef cusp::detail::row_or_column_view<typename values_array_type::iterator,thrust::detail::is_same<Orientation,cusp::column_major>::value> column_view_type;
+    typedef cusp::detail::row_or_column_view
+      <typename values_array_type::iterator,thrust::detail::is_same<Orientation,cusp::column_major>::value> column_view_type;
     typedef typename column_view_type::ArrayType column_view;
+
+    /*! const array1d_view of a single row
+     */
+    typedef cusp::detail::row_or_column_view
+      <typename values_array_type::const_iterator,thrust::detail::is_same<Orientation,cusp::row_major>::value>
+      const_row_view_type;
+
+    typedef typename const_row_view_type::ArrayType const_row_view;
+
+    /*! const array1d_view of a single column
+     */
+    typedef cusp::detail::row_or_column_view
+      <typename values_array_type::const_iterator,thrust::detail::is_same<Orientation,cusp::column_major>::value>
+      const_column_view_type;
+
+    typedef typename const_column_view_type::ArrayType const_column_view;
 
     // minor_dimension + padding
     size_t pitch;
@@ -326,12 +344,12 @@ public:
         return column_view_type::get_array(*this, i);
     }
 
-    row_view row(size_t i) const
+    const_row_view crow(size_t i) const
     {
         return row_view_type::get_array(*this, i);
     }
 
-    column_view column(size_t i) const
+    const_column_view ccolumn(size_t i) const
     {
         return column_view_type::get_array(*this, i);
     }
