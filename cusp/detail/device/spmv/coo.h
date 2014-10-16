@@ -23,6 +23,10 @@
 
 #include <thrust/device_ptr.h>
 
+#if THRUST_VERSION >= 100800
+#include <thrust/system/cuda/detail/cub.h>
+#endif
+
 // Note: Unlike the other kernels this kernel implements y += A*x
 
 namespace cusp
@@ -31,6 +35,81 @@ namespace detail
 {
 namespace device
 {
+
+namespace cub = thrust::system::cuda::detail::cub_;
+using namespace cub;
+
+/**
+ * A partial dot-product sum paired with a corresponding row-id
+ */
+template <typename IndexType, typename ValueType>
+struct PartialProduct
+{
+    IndexType    row;            /// Row-id
+    ValueType    partial;        /// PartialProduct sum
+};
+
+
+/**
+ * Reduce-value-by-row scan operator
+ */
+struct ReduceByKeyOp
+{
+    template <typename PartialProduct>
+    __device__ __forceinline__ PartialProduct operator()(
+        const PartialProduct &first,
+        const PartialProduct &second)
+    {
+        PartialProduct retval;
+
+        retval.partial = (second.row != first.row) ?
+                second.partial :
+                first.partial + second.partial;
+
+        retval.row = second.row;
+        return retval;
+    }
+};
+
+
+/**
+ * Stateful block-wide prefix operator for BlockScan
+ */
+template <typename PartialProduct>
+struct BlockPrefixCallbackOp
+{
+    // Running block-wide prefix
+    PartialProduct running_prefix;
+
+    /**
+     * Returns the block-wide running_prefix in thread-0
+     */
+    __device__ __forceinline__ PartialProduct operator()(
+        const PartialProduct &block_aggregate)              ///< The aggregate sum of the BlockScan inputs
+    {
+        ReduceByKeyOp scan_op;
+
+        PartialProduct retval = running_prefix;
+        running_prefix = scan_op(running_prefix, block_aggregate);
+        return retval;
+    }
+};
+
+
+/**
+ * Operator for detecting discontinuities in a list of row identifiers.
+ */
+struct NewRowOp
+{
+    /// Returns true if row_b is the start of a new row
+    template <typename IndexType>
+    __device__ __forceinline__ bool operator()(
+        const IndexType& row_a,
+        const IndexType& row_b)
+    {
+        return (row_a != row_b);
+    }
+};
 
 /******************************************************************************
  * Persistent thread block types
@@ -43,8 +122,8 @@ namespace device
 template <
     int             BLOCK_THREADS,
     int             ITEMS_PER_THREAD,
-    typename        VertexId,
-    typename        Value>
+    typename        IndexType,
+    typename        ValueType>
 struct PersistentBlockSpmv
 {
     //---------------------------------------------------------------------
@@ -61,19 +140,25 @@ struct PersistentBlockSpmv
     typedef int HeadFlag;
 
     // Partial dot product type
-    typedef PartialProduct<VertexId, Value> PartialProduct;
+    typedef PartialProduct<IndexType, ValueType> PartialProduct;
 
     // Parameterized BlockScan type for reduce-value-by-row scan
     typedef BlockScan<PartialProduct, BLOCK_THREADS, BLOCK_SCAN_RAKING_MEMOIZE> BlockScan;
 
     // Parameterized BlockExchange type for exchanging rows between warp-striped -> blocked arrangements
-    typedef BlockExchange<VertexId, BLOCK_THREADS, ITEMS_PER_THREAD, true> BlockExchangeRows;
+    typedef BlockExchange<IndexType, BLOCK_THREADS, ITEMS_PER_THREAD, true> BlockExchangeRows;
 
     // Parameterized BlockExchange type for exchanging values between warp-striped -> blocked arrangements
-    typedef BlockExchange<Value, BLOCK_THREADS, ITEMS_PER_THREAD, true> BlockExchangeValues;
+    typedef BlockExchange<ValueType, BLOCK_THREADS, ITEMS_PER_THREAD, true> BlockExchangeValueTypes;
 
     // Parameterized BlockDiscontinuity type for setting head-flags for each new row segment
     typedef BlockDiscontinuity<HeadFlag, BLOCK_THREADS> BlockDiscontinuity;
+
+    // Specialize BlockLoad for a 1D block of 128 threads owning 4 integer items each
+    typedef BlockLoad<IndexType*, BLOCK_THREADS, ITEMS_PER_THREAD, BLOCK_LOAD_WARP_TRANSPOSE> BlockLoadIndices;
+
+    // Specialize BlockLoad for a 1D block of 128 threads owning 4 integer items each
+    typedef BlockLoad<ValueType*, BLOCK_THREADS, ITEMS_PER_THREAD, BLOCK_LOAD_WARP_TRANSPOSE> BlockLoadValues;
 
     // Shared memory type for this threadblock
     struct TempStorage
@@ -81,7 +166,9 @@ struct PersistentBlockSpmv
         union
         {
             typename BlockExchangeRows::TempStorage         exchange_rows;      // Smem needed for BlockExchangeRows
-            typename BlockExchangeValues::TempStorage       exchange_values;    // Smem needed for BlockExchangeValues
+            typename BlockExchangeValueTypes::TempStorage   exchange_values;    // Smem needed for BlockExchangeValueTypes
+            typename BlockLoadIndices::TempStorage          load_indices;       // Smem needed for BlockExchangeRows
+            typename BlockLoadValues::TempStorage           load_values;        // Smem needed for BlockExchangeValueTypes
             struct
             {
                 typename BlockScan::TempStorage             scan;               // Smem needed for BlockScan
@@ -89,9 +176,9 @@ struct PersistentBlockSpmv
             };
         };
 
-        VertexId        first_block_row;    ///< The first row-ID seen by this thread block
-        VertexId        last_block_row;     ///< The last row-ID seen by this thread block
-        Value           first_product;      ///< The first dot-product written by this thread block
+        IndexType        first_block_row;    ///< The first row-ID seen by this thread block
+        IndexType        last_block_row;     ///< The last row-ID seen by this thread block
+        ValueType           first_product;      ///< The first dot-product written by this thread block
     };
 
     //---------------------------------------------------------------------
@@ -100,11 +187,11 @@ struct PersistentBlockSpmv
 
     TempStorage                     &temp_storage;
     BlockPrefixCallbackOp<PartialProduct>   prefix_op;
-    VertexId                        *d_rows;
-    VertexId                        *d_columns;
-    Value                           *d_values;
-    Value                           *d_vector;
-    Value                           *d_result;
+    const IndexType                 *d_rows;
+    const IndexType                 *d_columns;
+    const ValueType                 *d_values;
+    const ValueType                 *d_vector;
+    ValueType                       *d_result;
     PartialProduct                  *d_block_partials;
     int                             block_offset;
     int                             block_end;
@@ -120,11 +207,11 @@ struct PersistentBlockSpmv
     __device__ __forceinline__
     PersistentBlockSpmv(
         TempStorage                 &temp_storage,
-        VertexId                    *d_rows,
-        VertexId                    *d_columns,
-        Value                       *d_values,
-        Value                       *d_vector,
-        Value                       *d_result,
+        const IndexType             *d_rows,
+        const IndexType             *d_columns,
+        const ValueType             *d_values,
+        const ValueType             *d_vector,
+        ValueType                   *d_result,
         PartialProduct              *d_block_partials,
         int                         block_offset,
         int                         block_end)
@@ -142,16 +229,16 @@ struct PersistentBlockSpmv
         // Initialize scalar shared memory values
         if (threadIdx.x == 0)
         {
-            VertexId first_block_row            = d_rows[block_offset];
-            VertexId last_block_row             = d_rows[block_end - 1];
+            IndexType first_block_row            = d_rows[block_offset];
+            IndexType last_block_row             = d_rows[block_end - 1];
 
             temp_storage.first_block_row        = first_block_row;
             temp_storage.last_block_row         = last_block_row;
-            temp_storage.first_product          = Value(0);
+            temp_storage.first_product          = ValueType(0);
 
             // Initialize prefix_op to identity
             prefix_op.running_prefix.row        = first_block_row;
-            prefix_op.running_prefix.partial    = Value(0);
+            prefix_op.running_prefix.partial    = ValueType(0);
         }
 
         __syncthreads();
@@ -166,9 +253,9 @@ struct PersistentBlockSpmv
         int block_offset,
         int guarded_items = 0)
     {
-        VertexId        columns[ITEMS_PER_THREAD];
-        VertexId        rows[ITEMS_PER_THREAD];
-        Value           values[ITEMS_PER_THREAD];
+        IndexType       columns[ITEMS_PER_THREAD];
+        IndexType       rows[ITEMS_PER_THREAD];
+        ValueType       values[ITEMS_PER_THREAD];
         PartialProduct  partial_sums[ITEMS_PER_THREAD];
         HeadFlag        head_flags[ITEMS_PER_THREAD];
 
@@ -176,28 +263,28 @@ struct PersistentBlockSpmv
         if (FULL_TILE)
         {
             // Unguarded loads
-            LoadDirectWarpStriped<LOAD_DEFAULT>(threadIdx.x, d_columns + block_offset, columns);
-            LoadDirectWarpStriped<LOAD_DEFAULT>(threadIdx.x, d_values + block_offset, values);
-            LoadDirectWarpStriped<LOAD_DEFAULT>(threadIdx.x, d_rows + block_offset, rows);
+            LoadDirectWarpStriped(threadIdx.x, (IndexType*) d_columns + block_offset, columns);
+            LoadDirectWarpStriped(threadIdx.x, (ValueType*) d_values + block_offset, values);
+            LoadDirectWarpStriped(threadIdx.x, (IndexType*) d_rows + block_offset, rows);
         }
         else
         {
             // This is a partial-tile (e.g., the last tile of input).  Extend the coordinates of the last
             // vertex for out-of-bound items, but zero-valued
-            LoadDirectWarpStriped<LOAD_DEFAULT>(threadIdx.x, d_columns + block_offset, columns, guarded_items, VertexId(0));
-            LoadDirectWarpStriped<LOAD_DEFAULT>(threadIdx.x, d_values + block_offset, values, guarded_items, Value(0));
-            LoadDirectWarpStriped<LOAD_DEFAULT>(threadIdx.x, d_rows + block_offset, rows, guarded_items, temp_storage.last_block_row);
+            LoadDirectWarpStriped(threadIdx.x, (IndexType*) d_columns + block_offset, columns, guarded_items, IndexType(0));
+            LoadDirectWarpStriped(threadIdx.x, (ValueType*) d_values + block_offset, values, guarded_items, ValueType(0));
+            LoadDirectWarpStriped(threadIdx.x, (IndexType*) d_rows + block_offset, rows, guarded_items, temp_storage.last_block_row);
         }
 
         // Load the referenced values from x and compute the dot product partials sums
         #pragma unroll
         for (int ITEM = 0; ITEM < ITEMS_PER_THREAD; ITEM++)
         {
-            values[ITEM] *= ThreadLoad<LOAD_LDG>(d_vector + columns[ITEM]);
+            values[ITEM] *= ThreadLoad<LOAD_LDG>((ValueType*)d_vector + columns[ITEM]);
         }
 
         // Transpose from warp-striped to blocked arrangement
-        BlockExchangeValues(temp_storage.exchange_values).WarpStripedToBlocked(values);
+        BlockExchangeValueTypes(temp_storage.exchange_values).WarpStripedToBlocked(values);
 
         __syncthreads();
 
@@ -224,9 +311,13 @@ struct PersistentBlockSpmv
 
         // Reduce reduce-value-by-row across partial_sums using exclusive prefix scan
         PartialProduct block_aggregate;
+        PartialProduct identity;
+        identity.row     = 0;
+        identity.partial = 0;
         BlockScan(temp_storage.scan).ExclusiveScan(
             partial_sums,                   // Scan input
             partial_sums,                   // Scan output
+            identity,                       // identity
             ReduceByKeyOp(),                // Scan operator
             block_aggregate,                // Block-wide total (unused)
             prefix_op);                     // Prefix operator for seeding the block-wide scan with the running total
@@ -302,8 +393,8 @@ struct PersistentBlockSpmv
 template <
     int             BLOCK_THREADS,
     int             ITEMS_PER_THREAD,
-    typename        VertexId,
-    typename        Value>
+    typename        IndexType,
+    typename        ValueType>
 struct FinalizeSpmvBlock
 {
     //---------------------------------------------------------------------
@@ -320,7 +411,7 @@ struct FinalizeSpmvBlock
     typedef int HeadFlag;
 
     // Partial dot product type
-    typedef PartialProduct<VertexId, Value> PartialProduct;
+    typedef PartialProduct<IndexType, ValueType> PartialProduct;
 
     // Parameterized BlockScan type for reduce-value-by-row scan
     typedef BlockScan<PartialProduct, BLOCK_THREADS, BLOCK_SCAN_RAKING_MEMOIZE> BlockScan;
@@ -334,7 +425,7 @@ struct FinalizeSpmvBlock
         typename BlockScan::TempStorage           scan;               // Smem needed for reduce-value-by-row scan
         typename BlockDiscontinuity::TempStorage  discontinuity;      // Smem needed for head-flagging
 
-        VertexId last_block_row;
+        IndexType last_block_row;
     };
 
 
@@ -344,7 +435,7 @@ struct FinalizeSpmvBlock
 
     TempStorage                     &temp_storage;
     BlockPrefixCallbackOp<PartialProduct>   prefix_op;
-    Value                           *d_result;
+    ValueType                           *d_result;
     PartialProduct                  *d_block_partials;
     int                             num_partials;
 
@@ -359,7 +450,7 @@ struct FinalizeSpmvBlock
     __device__ __forceinline__
     FinalizeSpmvBlock(
         TempStorage                 &temp_storage,
-        Value                       *d_result,
+        ValueType                       *d_result,
         PartialProduct              *d_block_partials,
         int                         num_partials)
     :
@@ -371,13 +462,13 @@ struct FinalizeSpmvBlock
         // Initialize scalar shared memory values
         if (threadIdx.x == 0)
         {
-            VertexId first_block_row            = d_block_partials[0].row;
-            VertexId last_block_row             = d_block_partials[num_partials - 1].row;
+            IndexType first_block_row            = d_block_partials[0].row;
+            IndexType last_block_row             = d_block_partials[num_partials - 1].row;
             temp_storage.last_block_row         = last_block_row;
 
             // Initialize prefix_op to identity
             prefix_op.running_prefix.row        = first_block_row;
-            prefix_op.running_prefix.partial    = Value(0);
+            prefix_op.running_prefix.partial    = ValueType(0);
         }
 
         __syncthreads();
@@ -393,7 +484,7 @@ struct FinalizeSpmvBlock
         int block_offset,
         int guarded_items = 0)
     {
-        VertexId        rows[ITEMS_PER_THREAD];
+        IndexType       rows[ITEMS_PER_THREAD];
         PartialProduct  partial_sums[ITEMS_PER_THREAD];
         HeadFlag        head_flags[ITEMS_PER_THREAD];
 
@@ -408,7 +499,7 @@ struct FinalizeSpmvBlock
             // Partial tile (extend zero-valued coordinates of the last partial-product for out-of-bounds items)
             PartialProduct default_sum;
             default_sum.row = temp_storage.last_block_row;
-            default_sum.partial = Value(0);
+            default_sum.partial = ValueType(0);
 
             LoadDirectBlocked(threadIdx.x, d_block_partials + block_offset, partial_sums, guarded_items, default_sum);
         }
@@ -429,9 +520,13 @@ struct FinalizeSpmvBlock
 
         // Reduce reduce-value-by-row across partial_sums using exclusive prefix scan
         PartialProduct block_aggregate;
+        PartialProduct identity;
+        identity.row     = 0;
+        identity.partial = 0;
         BlockScan(temp_storage.scan).ExclusiveScan(
             partial_sums,                   // Scan input
             partial_sums,                   // Scan output
+            identity,
             ReduceByKeyOp(),                // Scan operator
             block_aggregate,                // Block-wide total (unused)
             prefix_op);                     // Prefix operator for seeding the block-wide scan with the running total
@@ -478,25 +573,52 @@ struct FinalizeSpmvBlock
 };
 
 /**
- * SpMV kernel whose thread blocks each process a contiguous segment of sparse COO tiles.
+ * Kernel for "fixing up" an array of interblock SpMV partial products.
  */
 template <
     int                             BLOCK_THREADS,
     int                             ITEMS_PER_THREAD,
-    typename                        VertexId,
-    typename                        Value>
+    typename                        IndexType,
+    typename                        ValueType>
+__launch_bounds__ (BLOCK_THREADS,  1)
+__global__ void CooFinalizeKernel(
+    PartialProduct<IndexType, ValueType> *d_block_partials,
+    int                                  num_partials,
+    ValueType                            *d_result)
+{
+    // Specialize "fix-up" threadblock abstraction type
+    typedef FinalizeSpmvBlock<BLOCK_THREADS, ITEMS_PER_THREAD, IndexType, ValueType> FinalizeSpmvBlock;
+
+    // Shared memory allocation
+    __shared__ typename FinalizeSpmvBlock::TempStorage temp_storage;
+
+    // Construct persistent thread block
+    FinalizeSpmvBlock persistent_block(temp_storage, d_result, d_block_partials, num_partials);
+
+    // Process input tiles
+    persistent_block.ProcessTiles();
+}
+
+/**
+ * SpMV kernel whose thread blocks each process a contiguous segment of sparse COO tiles.
+ */
+template <
+    int       BLOCK_THREADS,
+    int       ITEMS_PER_THREAD,
+    typename  IndexType,
+    typename  ValueType>
 __launch_bounds__ (BLOCK_THREADS)
 __global__ void CooKernel(
-    GridEvenShare<int>              even_share,
-    PartialProduct<VertexId, Value> *d_block_partials,
-    VertexId                        *d_rows,
-    VertexId                        *d_columns,
-    Value                           *d_values,
-    Value                           *d_vector,
-    Value                           *d_result)
+    cub::GridEvenShare<int>              even_share,
+    PartialProduct<IndexType, ValueType> *d_block_partials,
+    const IndexType                      *d_rows,
+    const IndexType                      *d_columns,
+    const ValueType                      *d_values,
+    const ValueType                      *d_vector,
+    ValueType                            *d_result)
 {
     // Specialize SpMV threadblock abstraction type
-    typedef PersistentBlockSpmv<BLOCK_THREADS, ITEMS_PER_THREAD, VertexId, Value> PersistentBlockSpmv;
+    typedef PersistentBlockSpmv<BLOCK_THREADS, ITEMS_PER_THREAD, IndexType, ValueType> PersistentBlockSpmv;
 
     // Shared memory allocation
     __shared__ typename PersistentBlockSpmv::TempStorage temp_storage;
@@ -522,14 +644,20 @@ __global__ void CooKernel(
 
 template <typename Matrix,
           typename Array1,
-          typename Array2,
-          typename ScalarType>
+          typename Array2>
 void spmv_coo(const Matrix& A,
               const Array1& x,
                     Array2& y,
-              const ScalarType alpha,
-              const ScalarType beta)
+              const typename Matrix::value_type alpha = 1,
+              const typename Matrix::value_type beta  = 0)
 {
+    using namespace cub;
+    using namespace thrust::system::cuda::detail;
+
+    typedef typename Matrix::index_type IndexType;
+    typedef typename Matrix::value_type ValueType;
+    typedef PartialProduct<IndexType,ValueType> Partial;
+
     // Parameterization for SM35
     enum
     {
@@ -543,27 +671,39 @@ void spmv_coo(const Matrix& A,
     const int COO_TILE_SIZE = COO_BLOCK_THREADS * COO_ITEMS_PER_THREAD;
 
     // Create SOA version of coo_graph on host
-    int num_rows  = A.num_rows;
-    int num_cols  = A.num_cols;
     int num_edges = A.num_entries;
 
-    CubDebugExit(cudaMemset(y.raw_data(), 0, num_rows * sizeof(ValueType)));
-    int max_coo_grid_size   = device_props.sm_count * coo_sm_occupancy * COO_SUBSCRIPTION_FACTOR;
+    int max_coo_grid_size = cusp::detail::device::arch::max_active_blocks(
+                                CooKernel<COO_BLOCK_THREADS, COO_ITEMS_PER_THREAD, IndexType, ValueType>,
+                                size_t(COO_BLOCK_THREADS), size_t(0)) * COO_SUBSCRIPTION_FACTOR;
+
+    if(beta == 0) cusp::blas::fill(y, ValueType(0));
 
     // Construct an even-share work distribution
     GridEvenShare<int> even_share(num_edges, max_coo_grid_size, COO_TILE_SIZE);
     int coo_grid_size  = even_share.grid_size;
     int num_partials   = coo_grid_size * 2;
 
+    cusp::array1d<Partial,cusp::device_memory> partials(num_partials);
+
     // Run the COO kernel
     CooKernel<COO_BLOCK_THREADS, COO_ITEMS_PER_THREAD><<<coo_grid_size, COO_BLOCK_THREADS>>>(
         even_share,
-        d_block_partials,
+        partials.raw_data(),
         A.row_indices.raw_data(),
         A.column_indices.raw_data(),
         A.values.raw_data(),
         x.raw_data(),
         y.raw_data());
+
+    if (coo_grid_size > 1)
+    {
+        // Run the COO finalize kernel
+        CooFinalizeKernel<FINALIZE_BLOCK_THREADS, FINALIZE_ITEMS_PER_THREAD><<<1, FINALIZE_BLOCK_THREADS>>>(
+            partials.raw_data(),
+            num_partials,
+            y.raw_data());
+    }
 }
 
 
