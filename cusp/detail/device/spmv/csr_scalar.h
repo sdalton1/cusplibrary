@@ -42,9 +42,8 @@ namespace device
 //   Same as spmv_csr_scalar_device, except x is accessed via texture cache.
 //
 
-template <bool UseCache,
-         typename IndexType,
-         typename ValueType>
+template <typename IndexType,
+          typename ValueType>
 __global__ void
 spmv_csr_scalar_kernel(const IndexType num_rows,
                        const IndexType * Ap,
@@ -64,40 +63,10 @@ spmv_csr_scalar_kernel(const IndexType num_rows,
         ValueType sum = 0;
 
         for (IndexType jj = row_start; jj < row_end; jj++)
-            sum += Ax[jj] * fetch_x<UseCache>(Aj[jj], x);
+            sum += Ax[jj] * x[Aj[jj]];
 
         y[row] = sum;
     }
-}
-
-
-template <bool UseCache,
-         typename Matrix,
-         typename Array1,
-         typename Array2>
-void __spmv_csr_scalar(const Matrix&    A,
-                       const Array1& x,
-                             Array2& y)
-{
-    typedef typename Matrix::index_type IndexType;
-    typedef typename Matrix::value_type ValueType;
-
-    const size_t BLOCK_SIZE = 256;
-    const size_t MAX_BLOCKS = cusp::detail::device::arch::max_active_blocks(spmv_csr_scalar_kernel<UseCache, IndexType, ValueType>, BLOCK_SIZE, (size_t) 0);
-    const size_t NUM_BLOCKS = std::min(MAX_BLOCKS, DIVIDE_INTO(A.num_rows, BLOCK_SIZE));
-
-    if (UseCache)
-        bind_x(x.raw_data());
-
-    spmv_csr_scalar_kernel<UseCache,IndexType,ValueType> <<<NUM_BLOCKS, BLOCK_SIZE>>>
-    (A.num_rows,
-     A.row_offsets.raw_data(),
-     A.column_indices.raw_data(),
-     A.values.raw_data(),
-     x.raw_data(), y.raw_data());
-
-    if (UseCache)
-        unbind_x(x.raw_data());
 }
 
 template <typename Matrix,
@@ -110,20 +79,19 @@ void spmv_csr_scalar(const Matrix& A,
                      const ScalarType& alpha,
                      const ScalarType& beta)
 {
-    __spmv_csr_scalar<false>(A, x, y);
-}
+    typedef typename Matrix::index_type IndexType;
+    typedef typename Matrix::value_type ValueType;
 
-template <typename Matrix,
-         typename Array1,
-         typename Array2,
-         typename ScalarType>
-void spmv_csr_scalar_tex(const Matrix& A,
-                         const Array1& x,
-                               Array2& y,
-                         const ScalarType& alpha,
-                         const ScalarType& beta)
-{
-    __spmv_csr_scalar<true>(A, x, y);
+    const size_t BLOCK_SIZE = 256;
+    const size_t MAX_BLOCKS = cusp::detail::device::arch::max_active_blocks(spmv_csr_scalar_kernel<IndexType, ValueType>, BLOCK_SIZE, (size_t) 0);
+    const size_t NUM_BLOCKS = std::min(MAX_BLOCKS, DIVIDE_INTO(A.num_rows, BLOCK_SIZE));
+
+    spmv_csr_scalar_kernel<IndexType,ValueType> <<<NUM_BLOCKS, BLOCK_SIZE>>>
+    (A.num_rows,
+     A.row_offsets.raw_data(),
+     A.column_indices.raw_data(),
+     A.values.raw_data(),
+     x.raw_data(), y.raw_data());
 }
 
 } // end namespace device

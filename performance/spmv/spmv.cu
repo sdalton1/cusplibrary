@@ -1,4 +1,4 @@
-#define CUSP_USE_TEXTURE_MEMORY
+#define CUB_STDERR
 
 #include <cusp/csr_matrix.h>
 #include <cusp/io/matrix_market.h>
@@ -29,7 +29,7 @@ std::string process_args(int argc, char ** argv)
         std::string arg(argv[i]);
 
         if (arg.substr(0,2) == "--")
-        {   
+        {
             std::string::size_type n = arg.find('=',2);
 
             if (n == std::string::npos)
@@ -53,7 +53,7 @@ void usage(int argc, char** argv)
     std::cout << "\t" << argv[0] << " my_matrix.mtx\n";
     std::cout << "\t" << argv[0] << " my_matrix.mtx --device=1\n";
     std::cout << "\t" << argv[0] << " my_matrix.mtx --value_type=double\n\n";
-    std::cout << "Note: my_matrix.mtx must be real-valued sparse matrix in the MatrixMarket file format.\n"; 
+    std::cout << "Note: my_matrix.mtx must be real-valued sparse matrix in the MatrixMarket file format.\n";
     std::cout << "      If no matrix file is provided then a simple example is created.\n";
 }
 
@@ -66,28 +66,28 @@ void test_all_formats(std::string& filename)
     list_devices();
 
     std::cout << "Running on Device " << device_id << "\n\n";
-    
+
     // load a matrix stored in MatrixMarket format
     cusp::csr_matrix<IndexType, ValueType, cusp::host_memory> host_matrix;
 
     if (filename == "")
     {
         std::cout << "Generated matrix (poisson5pt) ";
-        cusp::gallery::poisson5pt(host_matrix, 512, 512);
+        cusp::gallery::poisson5pt(host_matrix, 10, 10);
     }
     else
     {
         cusp::io::read_matrix_market_file(host_matrix, filename);
         std::cout << "Read matrix (" << filename << ") ";
     }
-        
+
     std::cout << "with shape ("  << host_matrix.num_rows << "," << host_matrix.num_cols << ") and "
               << host_matrix.num_entries << " entries" << "\n\n";
-    
+
     FILE * fid = fopen(BENCHMARK_OUTPUT_FILE_NAME, "a");
     fprintf(fid, "file=%s rows=%d cols=%d nonzeros=%d\n", filename.c_str(), (int) host_matrix.num_rows, (int) host_matrix.num_cols, (int) host_matrix.num_entries);
     fclose(fid);
-    
+
     test_coo(host_matrix);
     test_csr(host_matrix);
     test_dia(host_matrix);

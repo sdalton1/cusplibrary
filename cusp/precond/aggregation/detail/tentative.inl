@@ -19,10 +19,10 @@
 #include <cusp/array1d.h>
 #include <cusp/convert.h>
 #include <cusp/csr_matrix.h>
+#include <cusp/functional.h>
 #include <cusp/detail/format_utils.h>
 
 #include <thrust/count.h>
-#include <thrust/functional.h>
 #include <thrust/iterator/zip_iterator.h>
 #include <thrust/iterator/permutation_iterator.h>
 
@@ -82,7 +82,7 @@ void fit_candidates(const Array1& aggregates,
 
         // compute sum of squares for each column of Q (rows of Qt)
         cusp::array1d<IndexType, MemorySpace> temp(num_aggregates);
-        thrust::transform(Qt.values.begin(), Qt.values.end(), Qt.values.begin(), cusp::blas::detail::square<ValueType>());
+        thrust::transform(Qt.values.begin(), Qt.values.end(), Qt.values.begin(), cusp::square<ValueType>());
         thrust::reduce_by_key(Qt.row_indices.begin(), Qt.row_indices.end(),
                               Qt.values.begin(),
                               temp.begin(),

@@ -148,8 +148,6 @@ void test_csr(HostMatrix& host_matrix)
 
     test_spmv("csr_scalar",     host_matrix, test_matrix_on_host, test_matrix_on_device,
               cusp::detail::device::spmv_csr_scalar    <DeviceMatrix,DeviceArray,DeviceArray,ValueType>);
-    test_spmv("csr_scalar_tex", host_matrix, test_matrix_on_host, test_matrix_on_device,
-              cusp::detail::device::spmv_csr_scalar_tex<DeviceMatrix,DeviceArray,DeviceArray,ValueType>);
 }
 
 template <typename HostMatrix>

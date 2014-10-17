@@ -3,6 +3,8 @@
 #include <cuda.h>
 #include <iostream>
 
+#include <cusp/detail/device/utils.h>
+
 void set_device(int device_id)
 {
     cudaSetDevice(device_id);
@@ -36,21 +38,4 @@ void list_devices(void)
     }
     std::cout << std::endl;
 }
-
-
-template <typename T>
-T l2_error(size_t N, const T * a, const T * b)
-{
-    T numerator   = 0;
-    T denominator = 0;
-    for(size_t i = 0; i < N; i++)
-    {
-        numerator   += (a[i] - b[i]) * (a[i] - b[i]);
-        denominator += (b[i] * b[i]);
-    }
-
-    return numerator/denominator;
-}
-
-
 
