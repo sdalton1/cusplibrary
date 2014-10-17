@@ -17,11 +17,12 @@
 #pragma once
 
 #include <cusp/array1d.h>
+#include <cusp/complex.h>
 #include <cusp/exception.h>
+#include <cusp/functional.h>
 
 #include <thrust/copy.h>
 #include <thrust/fill.h>
-#include <thrust/functional.h>
 #include <thrust/transform.h>
 #include <thrust/transform_reduce.h>
 #include <thrust/inner_product.h>
@@ -34,167 +35,6 @@ namespace cusp
 {
 namespace blas
 {
-namespace detail
-{
-// square<T> computes the square of a number f(x) -> x*x
-template <typename T>
-struct square : public thrust::unary_function<T,T>
-{
-    __host__ __device__
-    T operator()(T x)
-    {
-        return x * x;
-    }
-};
-
-// absolute<T> computes the absolute value of a number f(x) -> |x|
-template <typename T>
-struct absolute : public thrust::unary_function<T,T>
-{
-    __host__ __device__
-    T operator()(T x)
-    {
-        return abs(x);
-    }
-};
-
-// maximum<T> returns the largest of two numbers
-template <typename T>
-struct maximum : public thrust::binary_function<T,T,T>
-{
-    __host__ __device__
-    T operator()(T x, T y)
-    {
-        return thrust::maximum<T>()(x,y);
-    }
-};
-
-// maximum<T> returns the number with the largest real part
-template <typename T>
-struct maximum<thrust::complex<T> > : public thrust::binary_function<thrust::complex<T>,thrust::complex<T>,thrust::complex<T> >
-{
-    __host__ __device__
-    thrust::complex<T> operator()(thrust::complex<T> x, thrust::complex<T> y)
-    {
-        return thrust::maximum<T>()(x.real(),y.real());
-    }
-};
-
-// conjugate<T> computes the complex conjugate of a number f(a + b * i) -> a - b * i
-template <typename T>
-struct conjugate : public thrust::unary_function<T,T>
-{
-    __host__ __device__
-    T operator()(T x)
-    {
-        return x;
-    }
-};
-
-template <typename T>
-struct conjugate<thrust::complex<T> > : public thrust::unary_function<thrust::complex<T>,
-        thrust::complex<T> >
-{
-    __host__ __device__
-    thrust::complex<T> operator()(thrust::complex<T> x)
-    {
-        return thrust::conj(x);
-    }
-};
-
-// square<T> computes the square of a number f(x) -> x*conj(x)
-template <typename T>
-struct norm_squared : public thrust::unary_function<T,T>
-{
-    __host__ __device__
-    T operator()(T x)
-    {
-        return x * conjugate<T>()(x);
-    }
-};
-template <typename T>
-struct SCAL
-{
-    T alpha;
-
-    SCAL(T _alpha)
-        : alpha(_alpha) {}
-
-    template <typename T2>
-    __host__ __device__
-    void operator()(T2 & x)
-    {
-        x = alpha * x;
-    }
-};
-
-
-template <typename T>
-struct AXPY
-{
-    T alpha;
-
-    AXPY(T _alpha)
-        : alpha(_alpha) {}
-
-    template <typename Tuple>
-    __host__ __device__
-    void operator()(Tuple t)
-    {
-        thrust::get<1>(t) = alpha * thrust::get<0>(t) +
-                            thrust::get<1>(t);
-    }
-};
-
-template <typename T1, typename T2>
-struct AXPBY
-{
-    T1 alpha;
-    T2 beta;
-
-    AXPBY(T1 _alpha, T2 _beta)
-        : alpha(_alpha), beta(_beta) {}
-
-    template <typename Tuple>
-    __host__ __device__
-    void operator()(Tuple t)
-    {
-        thrust::get<2>(t) = alpha * thrust::get<0>(t) +
-                            beta  * thrust::get<1>(t);
-    }
-};
-
-template <typename T1,typename T2,typename T3>
-struct AXPBYPCZ
-{
-    T1 alpha;
-    T2 beta;
-    T3 gamma;
-
-    AXPBYPCZ(T1 _alpha, T2 _beta, T3 _gamma)
-        : alpha(_alpha), beta(_beta), gamma(_gamma) {}
-
-    template <typename Tuple>
-    __host__ __device__
-    void operator()(Tuple t)
-    {
-        thrust::get<3>(t) = alpha * thrust::get<0>(t) +
-                            beta  * thrust::get<1>(t) +
-                            gamma * thrust::get<2>(t);
-    }
-};
-
-template <typename T>
-struct XMY : public thrust::binary_function<T,T,T>
-{
-    __host__ __device__
-    T operator()(T x, T y)
-    {
-        return x * y;
-    }
-};
-} // end namespace detail
-
 template <typename Array1,
          typename Array2,
          typename ScalarType>
@@ -206,7 +46,7 @@ void axpy(const thrustblas::detail::blas_policy<typename Array2::memory_space>& 
     size_t N = x.size();
     thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin())),
                      thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin())) + N,
-                     detail::AXPY<ScalarType>(alpha));
+                     cusp::AXPY<ScalarType>(alpha));
 }
 
 // TODO properly harmonize heterogenous types
@@ -232,8 +72,8 @@ dotc(const thrustblas::detail::blas_policy<typename Array1::memory_space>& polic
 {
     typedef typename Array1::value_type OutputType;
 
-    return thrust::inner_product(thrust::make_transform_iterator(x.begin(), detail::conjugate<OutputType>()),
-                                 thrust::make_transform_iterator(x.end(),  detail::conjugate<OutputType>()),
+    return thrust::inner_product(thrust::make_transform_iterator(x.begin(), cusp::conjugate<OutputType>()),
+                                 thrust::make_transform_iterator(x.end(),   cusp::conjugate<OutputType>()),
                                  y.begin(),
                                  OutputType(0));
 }
@@ -244,8 +84,8 @@ nrm1(const thrustblas::detail::blas_policy<typename Array::memory_space>& policy
 {
     typedef typename Array::value_type ValueType;
 
-    detail::absolute<ValueType> unary_op;
-    thrust::plus<ValueType>     binary_op;
+    cusp::absolute<ValueType> unary_op;
+    thrust::plus<ValueType>   binary_op;
 
     ValueType init = 0;
 
@@ -258,8 +98,8 @@ nrm2(const thrustblas::detail::blas_policy<typename Array::memory_space>& policy
 {
     typedef typename Array::value_type ValueType;
 
-    detail::norm_squared<ValueType> unary_op;
-    thrust::plus<ValueType>   binary_op;
+    cusp::norm_squared<ValueType> unary_op;
+    thrust::plus<ValueType> binary_op;
 
     ValueType init = 0;
 
@@ -272,8 +112,8 @@ nrmmax(const thrustblas::detail::blas_policy<typename Array::memory_space>& poli
 {
     typedef typename Array::value_type ValueType;
 
-    detail::absolute<ValueType>  unary_op;
-    detail::maximum<ValueType>   binary_op;
+    cusp::absolute<ValueType>  unary_op;
+    cusp::maximum<ValueType>   binary_op;
 
     ValueType init = 0;
 
@@ -287,7 +127,7 @@ void scal(const thrustblas::detail::blas_policy<typename Array::memory_space>& p
 {
     thrust::for_each(x.begin(),
                      x.end(),
-                     detail::SCAL<ScalarType>(alpha));
+                     cusp::SCAL<ScalarType>(alpha));
 }
 
 template<typename Array2d,

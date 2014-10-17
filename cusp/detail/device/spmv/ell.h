@@ -33,7 +33,7 @@ namespace detail
 namespace device
 {
 
-template <typename IndexType, typename ValueType, size_t BLOCK_SIZE, bool UseCache>
+template <typename IndexType, typename ValueType, size_t BLOCK_SIZE>
 __launch_bounds__(BLOCK_SIZE,1)
 __global__ void
 spmv_ell_kernel(const IndexType num_rows,
@@ -47,23 +47,23 @@ spmv_ell_kernel(const IndexType num_rows,
 {
     const IndexType invalid_index = cusp::ell_matrix<IndexType, ValueType, cusp::device_memory>::invalid_index;
 
-    const IndexType thread_id = blockDim.x * blockIdx.x + threadIdx.x;
-    const IndexType grid_size = gridDim.x * blockDim.x;
+    const int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
+    const int grid_size = gridDim.x * blockDim.x;
 
-    for(IndexType row = thread_id; row < num_rows; row += grid_size)
+    for(int row = thread_id; row < num_rows; row += grid_size)
     {
-        ValueType sum = 0;
+        ValueType sum = ValueType(0);
 
-        IndexType offset = row;
+        int offset = row;
 
-        for(IndexType n = 0; n < num_cols_per_row; n++)
+        for(int n = 0; n < num_cols_per_row; n++)
         {
             const IndexType col = Aj[offset];
 
             if (col != invalid_index)
             {
                 const ValueType A_ij = Ax[offset];
-                sum += A_ij * fetch_x<UseCache>(col, x);
+                sum += A_ij * x[col];
             }
 
             offset += pitch;
@@ -73,20 +73,22 @@ spmv_ell_kernel(const IndexType num_rows,
     }
 }
 
-
-template <bool UseCache,
-         typename Matrix,
-         typename Array1,
-         typename Array2>
-void __spmv_ell(const Matrix& A,
-                const Array1& x,
-                      Array2& y)
+template <typename Matrix,
+          typename Array1,
+          typename Array2,
+          typename ScalarType>
+void spmv_ell(const Matrix& A,
+              const Array1& x,
+                    Array2& y,
+              const ScalarType alpha,
+              const ScalarType beta)
 {
     typedef typename Matrix::index_type IndexType;
     typedef typename Matrix::value_type ValueType;
 
     const size_t BLOCK_SIZE = 256;
-    const size_t MAX_BLOCKS = cusp::detail::device::arch::max_active_blocks(spmv_ell_kernel<IndexType,ValueType,BLOCK_SIZE,UseCache>, BLOCK_SIZE, (size_t) 0);
+    const size_t MAX_BLOCKS =
+      cusp::detail::device::arch::max_active_blocks(spmv_ell_kernel<IndexType,ValueType,BLOCK_SIZE>, BLOCK_SIZE, (size_t) 0);
     const size_t NUM_BLOCKS = std::min<size_t>(MAX_BLOCKS, DIVIDE_INTO(A.num_rows, BLOCK_SIZE));
 
     const IndexType pitch               = A.column_indices.pitch;
@@ -94,45 +96,12 @@ void __spmv_ell(const Matrix& A,
 
     // TODO generalize this
     assert(A.column_indices.pitch == A.values.pitch);
-
-    if (UseCache)
-        bind_x(x.raw_data());
-
-    spmv_ell_kernel<IndexType,ValueType,BLOCK_SIZE,UseCache> <<<NUM_BLOCKS, BLOCK_SIZE>>>
+    spmv_ell_kernel<IndexType,ValueType,BLOCK_SIZE> <<<NUM_BLOCKS, BLOCK_SIZE>>>
     (A.num_rows, A.num_cols,
      num_entries_per_row, pitch,
      A.column_indices.values.raw_data(),
      A.values.values.raw_data(),
-     x.raw_data(), (ValueType*) y.raw_data());
-
-    if (UseCache)
-        unbind_x(x.raw_data());
-}
-
-template <typename Matrix,
-         typename Array1,
-         typename Array2,
-         typename ScalarType>
-void spmv_ell(const Matrix& A,
-              const Array1& x,
-                    Array2& y,
-              const ScalarType alpha,
-              const ScalarType beta)
-{
-    __spmv_ell<false>(A, x, y);
-}
-
-template <typename Matrix,
-         typename Array1,
-         typename Array2,
-         typename ScalarType>
-void spmv_ell_tex(const Matrix& A,
-                  const Array1& x,
-                        Array2& y,
-                  const ScalarType alpha,
-                  const ScalarType beta)
-{
-    __spmv_ell<true>(A, x, y);
+     x.raw_data(), y.raw_data());
 }
 
 } // end namespace device

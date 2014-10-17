@@ -38,17 +38,6 @@ void spmv_hyb(const Matrix&   A,
     spmv_coo(A.coo, x, y, alpha, ScalarType(1));
 }
 
-template <typename Matrix, typename Array1, typename Array2, typename ScalarType>
-void spmv_hyb_tex(const Matrix&   A,
-                  const Array1&   x,
-                        Array2&   y,
-                  const ScalarType& alpha,
-                  const ScalarType& beta)
-{
-    spmv_ell_tex(A.ell, x, y, alpha, beta);
-    spmv_coo(A.coo, x, y, alpha, ScalarType(1));
-}
-
 } // end namespace device
 } // end namespace detail
 } // end namespace cusp

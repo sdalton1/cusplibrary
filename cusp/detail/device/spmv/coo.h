@@ -17,9 +17,6 @@
 #pragma once
 
 #include <cusp/detail/device/arch.h>
-#include <cusp/detail/device/common.h>
-#include <cusp/detail/device/utils.h>
-#include <cusp/detail/device/texture.h>
 
 #include <thrust/device_ptr.h>
 
@@ -28,8 +25,6 @@
 #else
 #include <cusp/detail/thrust/system/cuda/detail/cub.h>
 #endif
-
-// Note: Unlike the other kernels this kernel implements y += A*x
 
 namespace cusp
 {
@@ -192,6 +187,7 @@ struct PersistentBlockSpmv
     const ValueType                 *d_values;
     const ValueType                 *d_vector;
     ValueType                       *d_result;
+    ValueType                       beta;
     PartialProduct                  *d_block_partials;
     int                             block_offset;
     int                             block_end;
@@ -212,6 +208,7 @@ struct PersistentBlockSpmv
         const ValueType             *d_values,
         const ValueType             *d_vector,
         ValueType                   *d_result,
+        ValueType                   beta,
         PartialProduct              *d_block_partials,
         int                         block_offset,
         int                         block_end)
@@ -222,6 +219,7 @@ struct PersistentBlockSpmv
         d_values(d_values),
         d_vector(d_vector),
         d_result(d_result),
+        beta(beta),
         d_block_partials(d_block_partials),
         block_offset(block_offset),
         block_end(block_end)
@@ -312,7 +310,7 @@ struct PersistentBlockSpmv
         // Reduce reduce-value-by-row across partial_sums using exclusive prefix scan
         PartialProduct block_aggregate;
         PartialProduct identity;
-        identity.row     = 0;
+        identity.row     = partial_sums[0].row;
         identity.partial = ValueType(0);
         BlockScan(temp_storage.scan).ExclusiveScan(
             partial_sums,                   // Scan input
@@ -435,9 +433,10 @@ struct FinalizeSpmvBlock
 
     TempStorage                     &temp_storage;
     BlockPrefixCallbackOp<PartialProduct>   prefix_op;
-    ValueType                           *d_result;
+    ValueType                       *d_result;
     PartialProduct                  *d_block_partials;
     int                             num_partials;
+    ValueType                       beta;
 
 
     //---------------------------------------------------------------------
@@ -450,20 +449,22 @@ struct FinalizeSpmvBlock
     __device__ __forceinline__
     FinalizeSpmvBlock(
         TempStorage                 &temp_storage,
-        ValueType                       *d_result,
+        ValueType                   *d_result,
+        ValueType                   beta,
         PartialProduct              *d_block_partials,
         int                         num_partials)
         :
         temp_storage(temp_storage),
         d_result(d_result),
         d_block_partials(d_block_partials),
-        num_partials(num_partials)
+        num_partials(num_partials),
+        beta(beta)
     {
         // Initialize scalar shared memory values
         if (threadIdx.x == 0)
         {
-            IndexType first_block_row            = d_block_partials[0].row;
-            IndexType last_block_row             = d_block_partials[num_partials - 1].row;
+            IndexType first_block_row           = d_block_partials[0].row;
+            IndexType last_block_row            = d_block_partials[num_partials - 1].row;
             temp_storage.last_block_row         = last_block_row;
 
             // Initialize prefix_op to identity
@@ -521,8 +522,8 @@ struct FinalizeSpmvBlock
         // Reduce reduce-value-by-row across partial_sums using exclusive prefix scan
         PartialProduct block_aggregate;
         PartialProduct identity;
-        identity.row     = 0;
-        identity.partial = 0;
+        identity.row     = partial_sums[0].row;
+        identity.partial = ValueType(0);
         BlockScan(temp_storage.scan).ExclusiveScan(
             partial_sums,                   // Scan input
             partial_sums,                   // Scan output
@@ -537,7 +538,10 @@ struct FinalizeSpmvBlock
         {
             if (head_flags[ITEM])
             {
-                d_result[partial_sums[ITEM].row] = partial_sums[ITEM].partial;
+                if(beta == ValueType(0))
+                  d_result[partial_sums[ITEM].row] = partial_sums[ITEM].partial;
+                else
+                  d_result[partial_sums[ITEM].row] = partial_sums[ITEM].partial + (beta * d_result[partial_sums[ITEM].row]);
             }
         }
     }
@@ -565,9 +569,12 @@ struct FinalizeSpmvBlock
         }
 
         // Scatter the final aggregate (this kernel contains only 1 threadblock)
-        if (threadIdx.x == 0)
+        if (threadIdx.x == 0 && gridDim.x == 1)
         {
-            d_result[prefix_op.running_prefix.row] = prefix_op.running_prefix.partial;
+            if(beta == ValueType(0))
+              d_result[prefix_op.running_prefix.row] = prefix_op.running_prefix.partial;
+            else
+              d_result[prefix_op.running_prefix.row] = prefix_op.running_prefix.partial + (beta * d_result[prefix_op.running_prefix.row]);
         }
     }
 };
@@ -577,13 +584,14 @@ struct FinalizeSpmvBlock
  */
 template <
 int                             BLOCK_THREADS,
-                                int                             ITEMS_PER_THREAD,
-                                typename                        IndexType,
-                                typename                        ValueType>
+int                             ITEMS_PER_THREAD,
+typename                        IndexType,
+typename                        ValueType>
 __launch_bounds__ (BLOCK_THREADS,  1)
 __global__ void CooFinalizeKernel(
     PartialProduct<IndexType, ValueType> *d_block_partials,
     int                                  num_partials,
+    ValueType                            beta,
     ValueType                            *d_result)
 {
     // Specialize "fix-up" threadblock abstraction type
@@ -593,7 +601,7 @@ __global__ void CooFinalizeKernel(
     __shared__ typename FinalizeSpmvBlock::TempStorage temp_storage;
 
     // Construct persistent thread block
-    FinalizeSpmvBlock persistent_block(temp_storage, d_result, d_block_partials, num_partials);
+    FinalizeSpmvBlock persistent_block(temp_storage, d_result, beta, d_block_partials, num_partials);
 
     // Process input tiles
     persistent_block.ProcessTiles();
@@ -615,6 +623,7 @@ __global__ void CooKernel(
     const IndexType                      *d_columns,
     const ValueType                      *d_values,
     const ValueType                      *d_vector,
+    const ValueType                      beta,
     ValueType                            *d_result)
 {
     // Specialize SpMV threadblock abstraction type
@@ -634,6 +643,7 @@ __global__ void CooKernel(
         d_values,
         d_vector,
         d_result,
+        beta,
         d_block_partials,
         even_share.block_offset,
         even_share.block_end);
@@ -653,7 +663,6 @@ void spmv_coo(const Matrix& A,
               const ScalarType beta)
 {
     using namespace cub;
-    using namespace thrust::system::cuda::detail;
 
     typedef typename Matrix::index_type IndexType;
     typedef typename Matrix::value_type ValueType;
@@ -687,7 +696,9 @@ void spmv_coo(const Matrix& A,
         int coo_grid_size = even_share.grid_size;
         int num_partials  = coo_grid_size * 2;
 
-        cusp::array1d<Partial,cusp::device_memory> partials(num_partials);
+        Partial init;
+        init.partial = 0;
+        cusp::array1d<Partial,cusp::device_memory> partials(num_partials, init);
 
         // Run the COO kernel
         CooKernel<BLOCK_THREADS, ITEMS_PER_THREAD><<<coo_grid_size, BLOCK_THREADS>>>(
@@ -697,6 +708,7 @@ void spmv_coo(const Matrix& A,
             A.column_indices.raw_data(),
             A.values.raw_data(),
             x.raw_data(),
+            ValueType(beta),
             y.raw_data());
 
         if (coo_grid_size > 1)
@@ -705,6 +717,7 @@ void spmv_coo(const Matrix& A,
             CooFinalizeKernel<FINALIZE_BLOCK_THREADS, FINALIZE_ITEMS_PER_THREAD><<<1, FINALIZE_BLOCK_THREADS>>>(
                 partials.raw_data(),
                 num_partials,
+                ValueType(beta),
                 y.raw_data());
         }
     }

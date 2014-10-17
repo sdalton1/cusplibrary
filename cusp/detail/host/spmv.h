@@ -1,7 +1,26 @@
+/*
+ *  Copyright 2008-2014 NVIDIA Corporation
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+/*! \file spmv.h
+ *  \brief Host SpMV routines
+ */
+
 #pragma once
 
-#include <thrust/functional.h>
-#include <cusp/detail/functional.h>
+#include <cusp/functional.h>
 
 //MW: add some OpenMP pragmas
 namespace cusp
@@ -54,7 +73,7 @@ void spmv_coo(const Matrix&  A,
     typedef typename Vector2::value_type ValueType;
 
     spmv_coo(A, x, y,
-             cusp::detail::zero_function<ValueType>(),
+             cusp::zero_function<ValueType>(),
              thrust::multiplies<ValueType>(),
              thrust::plus<ValueType>());
 }
@@ -110,7 +129,7 @@ void spmv_csr(const Matrix&  A,
     typedef typename Vector2::value_type ValueType;
 
     spmv_csr(A, x, y,
-             cusp::detail::zero_function<ValueType>(),
+             cusp::zero_function<ValueType>(),
              thrust::multiplies<ValueType>(),
              thrust::plus<ValueType>());
 }
@@ -172,7 +191,7 @@ void spmv_dia(const Matrix&  A,
     typedef typename Vector2::value_type ValueType;
 
     spmv_dia(A, x, y,
-             cusp::detail::zero_function<ValueType>(),
+             cusp::zero_function<ValueType>(),
              thrust::multiplies<ValueType>(),
              thrust::plus<ValueType>());
 }
@@ -230,7 +249,7 @@ void spmv_ell(const Matrix&  A,
     typedef typename Vector2::value_type ValueType;
 
     spmv_ell(A, x, y,
-             cusp::detail::zero_function<ValueType>(),
+             cusp::zero_function<ValueType>(),
              thrust::multiplies<ValueType>(),
              thrust::plus<ValueType>());
 }

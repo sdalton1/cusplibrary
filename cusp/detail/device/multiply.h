@@ -36,22 +36,6 @@ namespace detail
 namespace device
 {
 
-//////////////////////////////////
-// Dense Matrix-Vector Multiply //
-//////////////////////////////////
-//// TODO implement this for both row and column-major ordering
-//template <typename Matrix,
-//          typename Vector1,
-//          typename Vector2>
-//void multiply(const Matrix&  A,
-//              const Vector1& B,
-//                    Vector2& C,
-//              cusp::array2d_format,
-//              cusp::array1d_format,
-//              cusp::array1d_format)
-//{
-//}
-
 ///////////////////////////////////
 // Sparse Matrix-Vector Multiply //
 ///////////////////////////////////
@@ -65,7 +49,7 @@ void multiply(const Matrix&  A,
               cusp::array1d_format,
               cusp::array1d_format)
 {
-    cusp::detail::device::spmv_coo(A, B, C);
+    cusp::detail::device::spmv_coo(A, B, C, 1, 0);
 }
 
 template <typename Matrix,
@@ -78,11 +62,7 @@ void multiply(const Matrix&  A,
               cusp::array1d_format,
               cusp::array1d_format)
 {
-#ifdef CUSP_USE_TEXTURE_MEMORY
-    cusp::detail::device::spmv_csr_vector_tex(A, B, C);
-#else
-    cusp::detail::device::spmv_csr_vector(A, B, C);
-#endif
+    cusp::detail::device::spmv_csr_vector(A, B, C, 1, 0);
 }
 
 template <typename Matrix,
@@ -95,11 +75,7 @@ void multiply(const Matrix&  A,
               cusp::array1d_format,
               cusp::array1d_format)
 {
-#ifdef CUSP_USE_TEXTURE_MEMORY
-    cusp::detail::device::spmv_dia_tex(A, B, C);
-#else
-    cusp::detail::device::spmv_dia(A, B, C);
-#endif
+    cusp::detail::device::spmv_dia(A, B, C, 1, 0);
 }
 
 template <typename Matrix,
@@ -112,11 +88,7 @@ void multiply(const Matrix&  A,
               cusp::array1d_format,
               cusp::array1d_format)
 {
-#ifdef CUSP_USE_TEXTURE_MEMORY
-    cusp::detail::device::spmv_ell_tex(A, B, C);
-#else
-    cusp::detail::device::spmv_ell(A, B, C);
-#endif
+    cusp::detail::device::spmv_ell(A, B, C, 1, 0);
 }
 
 template <typename Matrix,
@@ -129,32 +101,8 @@ void multiply(const Matrix&  A,
               cusp::array1d_format,
               cusp::array1d_format)
 {
-#ifdef CUSP_USE_TEXTURE_MEMORY
-    cusp::detail::device::spmv_hyb_tex(A, B, C);
-#else
-    cusp::detail::device::spmv_hyb(A, B, C);
-#endif
+    cusp::detail::device::spmv_hyb(A, B, C, 1, 0);
 }
-
-////////////////////////////////////////
-// Sparse Matrix-BlockVector Multiply //
-////////////////////////////////////////
-//// TODO specialize
-// template <typename Matrix,
-//          typename Vector1,
-//          typename Vector2>
-// void multiply(const Matrix&  A,
-//               const Vector1& B,
-//               Vector2& C,
-//               cusp::sparse_format,
-//               cusp::array2d_format,
-//               cusp::array2d_format,
-//               cusp::column_major,
-//               cusp::column_major)
-// {
-//     for( size_t j = 0; j < B.num_cols; j++ )
-//         cusp::multiply(A, B.column(j), C.column(j));
-// }
 
 /////////////////////////////////
 // Permutation Matrix Multiply //
@@ -171,38 +119,6 @@ void multiply(const Matrix&  A,
 {
     thrust::gather(A.permutation.begin(), A.permutation.end(), B.begin(), C.begin());
 }
-
-// template <typename Matrix,
-//          typename Vector1,
-//          typename Vector2>
-// void multiply(const Matrix& A,
-//               const Vector1& B,
-//               Vector2& C,
-//               cusp::permutation_format,
-//               cusp::array2d_format,
-//               cusp::array2d_format)
-// {
-//    typedef typename Vector1::orientation Orientation1;
-//    typedef typename Vector2::orientation Orientation2;
-//
-//    // define types used to programatically generate row_indices
-//    typedef typename thrust::counting_iterator<int> IndexIterator;
-//    typedef typename thrust::transform_iterator<modulus_value<int>, IndexIterator> RowIndexIterator;
-//    typedef typename thrust::transform_iterator<divide_value<int>, IndexIterator> ColIndexIterator;
-//
-//    RowIndexIterator row_indices_begin(IndexIterator(0), modulus_value<int>(B.pitch));
-//    ColIndexIterator col_indices_begin(IndexIterator(0), divide_value<int>(B.pitch));
-//
-//    IndexIterator begin(0);
-//
-//    // prefer coalesced writes to coalesced reads
-//    cusp::detail::logical_to_physical_functor  <int, Orientation1>               func1(B.num_rows, B.num_cols, B.pitch);
-//    cusp::detail::logical_to_physical_functor  <int, Orientation2>               func2(C.num_rows, C.num_cols, C.pitch);
-//
-//    thrust::copy(thrust::make_permutation_iterator(B.values.begin(), thrust::make_transform_iterator(perm_begin, func1)),
-//                 thrust::make_permutation_iterator(B.values.begin(), thrust::make_transform_iterator(perm_end,   func1)),
-//                 thrust::make_permutation_iterator(C.values.begin(), thrust::make_transform_iterator(begin, func2)));
-// }
 
 // Ensure 2D arrays are stored in column-major format
 template <typename Matrix,
@@ -222,22 +138,6 @@ void multiply(const Matrix&  A,
                                    typename Vector1::orientation(),
                                    typename Vector2::orientation());
 }
-
-////////////////////////////////////////
-// Dense Matrix-Matrix Multiplication //
-////////////////////////////////////////
-// TODO implement
-//template <typename Matrix1,
-//          typename Matrix2,
-//          typename Matrix3>
-//void multiply(const Matrix1& A,
-//              const Matrix2& B,
-//                    Matrix3& C,
-//              cusp::array2d_format,
-//              cusp::array2d_format,
-//              cusp::array2d_format)
-//{
-//}
 
 /////////////////////////////////////////
 // Sparse Matrix-Matrix Multiplication //

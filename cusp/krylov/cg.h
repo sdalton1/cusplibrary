@@ -61,7 +61,7 @@ void cg(LinearOperator& A,
  * Solves the symmetric, positive-definite linear system A x = b
  * with preconditioner \p M.
  *
- * \param A matrix of the linear system 
+ * \param A matrix of the linear system
  * \param x approximate solution of the linear system
  * \param b right-hand side of the linear system
  * \param monitor montiors iteration and determines stopping conditions
@@ -74,7 +74,7 @@ void cg(LinearOperator& A,
  *
  * \note \p A and \p M must be symmetric and positive-definite.
  *
- *  The following code snippet demonstrates how to use \p cg to 
+ *  The following code snippet demonstrates how to use \p cg to
  *  solve a 10x10 Poisson problem.
  *
  *  \code
@@ -82,7 +82,7 @@ void cg(LinearOperator& A,
  *  #include <cusp/monitor.h>
  *  #include <cusp/krylov/cg.h>
  *  #include <cusp/gallery/poisson.h>
- *  
+ *
  *  int main(void)
  *  {
  *      // create an empty sparse matrix structure (CSR format)
@@ -109,7 +109,7 @@ void cg(LinearOperator& A,
  *      return 0;
  *  }
  *  \endcode
- 
+
  *  \see \p default_monitor
  *  \see \p verbose_monitor
  *

@@ -19,7 +19,7 @@
 #include <cusp/format.h>
 #include <cusp/csr_matrix.h>
 
-#include <cusp/detail/functional.h>
+#include <cusp/functional.h>
 
 #ifdef INTEL_MKL_SPBLAS
 #include <cusp/detail/host/spmv_mkl.h>

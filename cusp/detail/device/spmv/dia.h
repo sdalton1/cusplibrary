@@ -54,7 +54,7 @@ namespace device
 //
 
 
-template <typename IndexType, typename ValueType, unsigned int BLOCK_SIZE, bool UseCache>
+template <typename IndexType, typename ValueType, unsigned int BLOCK_SIZE>
 __launch_bounds__(BLOCK_SIZE,1)
 __global__ void
 spmv_dia_kernel(const IndexType num_rows,
@@ -68,13 +68,13 @@ spmv_dia_kernel(const IndexType num_rows,
 {
     __shared__ IndexType offsets[BLOCK_SIZE];
 
-    const IndexType thread_id = BLOCK_SIZE * blockIdx.x + threadIdx.x;
-    const IndexType grid_size = BLOCK_SIZE * gridDim.x;
+    const int thread_id = BLOCK_SIZE * blockIdx.x + threadIdx.x;
+    const int grid_size = BLOCK_SIZE * gridDim.x;
 
-    for(IndexType base = 0; base < num_diagonals; base += BLOCK_SIZE)
+    for(int base = 0; base < num_diagonals; base += BLOCK_SIZE)
     {
         // read a chunk of the diagonal offsets into shared memory
-        const IndexType chunk_size = thrust::min(IndexType(BLOCK_SIZE), num_diagonals - base);
+        const int chunk_size = thrust::min(int(BLOCK_SIZE), int(num_diagonals) - base);
 
         if(threadIdx.x < chunk_size)
             offsets[threadIdx.x] = diagonal_offsets[base + threadIdx.x];
@@ -89,14 +89,14 @@ spmv_dia_kernel(const IndexType num_rows,
             // index into values array
             IndexType idx = row + pitch * base;
 
-            for(IndexType n = 0; n < chunk_size; n++)
+            for(int n = 0; n < chunk_size; n++)
             {
                 const IndexType col = row + offsets[n];
 
                 if(col >= 0 && col < num_cols)
                 {
                     const ValueType A_ij = values[idx];
-                    sum += A_ij * fetch_x<UseCache>(col, x);
+                    sum += A_ij * x[col];
                 }
 
                 idx += pitch;
@@ -110,20 +110,22 @@ spmv_dia_kernel(const IndexType num_rows,
     }
 }
 
-
-template <bool UseCache,
-         typename Matrix,
-         typename Array1,
-         typename Array2>
-void __spmv_dia(const Matrix& A,
-                const Array1&  x,
-                      Array2& y)
+template <typename Matrix,
+          typename Array1,
+          typename Array2,
+          typename ScalarType>
+void spmv_dia(const Matrix& A,
+              const Array1& x,
+                    Array2& y,
+              const ScalarType alpha,
+              const ScalarType beta)
 {
     typedef typename Matrix::index_type IndexType;
     typedef typename Matrix::value_type ValueType;
 
     const size_t BLOCK_SIZE = 256;
-    const size_t MAX_BLOCKS = cusp::detail::device::arch::max_active_blocks(spmv_dia_kernel<IndexType, ValueType, BLOCK_SIZE, UseCache>, BLOCK_SIZE, (size_t) sizeof(IndexType) * BLOCK_SIZE);
+    const size_t MAX_BLOCKS =
+      cusp::detail::device::arch::max_active_blocks(spmv_dia_kernel<IndexType, ValueType, BLOCK_SIZE>, BLOCK_SIZE, (size_t) sizeof(IndexType) * BLOCK_SIZE);
     const size_t NUM_BLOCKS = std::min<size_t>(MAX_BLOCKS, DIVIDE_INTO(A.num_rows, BLOCK_SIZE));
 
     const IndexType num_diagonals = A.values.num_cols;
@@ -137,43 +139,11 @@ void __spmv_dia(const Matrix& A,
         return;
     }
 
-    if (UseCache)
-        bind_x(x.raw_data());
-
-    spmv_dia_kernel<IndexType, ValueType, BLOCK_SIZE, UseCache> <<<NUM_BLOCKS, BLOCK_SIZE>>>
+    spmv_dia_kernel<IndexType, ValueType, BLOCK_SIZE> <<<NUM_BLOCKS, BLOCK_SIZE>>>
     (A.num_rows, A.num_cols, num_diagonals, pitch,
      A.diagonal_offsets.raw_data(),
      A.values.values.raw_data(),
-     x.raw_data(), (ValueType*) y.raw_data());
-
-    if (UseCache)
-        unbind_x(x.raw_data());
-}
-
-template <typename Matrix,
-          typename Array1,
-          typename Array2,
-          typename ScalarType>
-void spmv_dia(const Matrix& A,
-              const Array1& x,
-                    Array2& y,
-              const ScalarType alpha,
-              const ScalarType beta)
-{
-    __spmv_dia<false>(A, x, y);
-}
-
-template <typename Matrix,
-          typename Array1,
-          typename Array2,
-          typename ScalarType>
-void spmv_dia_tex(const Matrix& A,
-                  const Array1& x,
-                        Array2& y,
-                  const ScalarType alpha,
-                  const ScalarType beta)
-{
-    __spmv_dia<true>(A, x, y);
+     x.raw_data(), y.raw_data());
 }
 
 } // end namespace device

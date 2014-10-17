@@ -118,7 +118,7 @@ void axpby(const Array1& x,
     size_t N = x.size();
     thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin())),
                      thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin())) + N,
-                     detail::AXPBY<ScalarType1,ScalarType2>(alpha, beta));
+                     cusp::AXPBY<ScalarType1,ScalarType2>(alpha, beta));
 }
 
 template <typename Array1,
@@ -157,7 +157,7 @@ void axpbypcz(const Array1& x,
     size_t N = x.size();
     thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin(), output.begin())),
                      thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin(), output.begin())) + N,
-                     detail::AXPBYPCZ<ScalarType1,ScalarType2,ScalarType3>(alpha, beta, gamma));
+                     cusp::AXPBYPCZ<ScalarType1,ScalarType2,ScalarType3>(alpha, beta, gamma));
 }
 
 template <typename Array1,
@@ -190,7 +190,7 @@ void xmy(const Array1& x,
     CUSP_PROFILE_SCOPED();
 
     detail::assert_same_dimensions(x, y, output);
-    thrust::transform(x.begin(), x.end(), y.begin(), output.begin(), detail::XMY<ValueType>());
+    thrust::transform(x.begin(), x.end(), y.begin(), output.begin(), cusp::XMY<ValueType>());
 }
 
 template <typename Array1,

@@ -30,6 +30,7 @@
 
 namespace cusp
 {
+
 template <typename T>
 struct norm_type {
     typedef T type;

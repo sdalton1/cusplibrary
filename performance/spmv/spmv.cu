@@ -4,11 +4,11 @@
 #include <cusp/io/matrix_market.h>
 #include <cusp/gallery/poisson.h>
 
-#include <iostream>
-#include <string>
-#include <map>
 #include <cmath>
+#include <iostream>
+#include <map>
 #include <limits>
+#include <string>
 
 #include <cusp/multiply.h>
 #include <cusp/detail/device/spmv/csr_scalar.h>

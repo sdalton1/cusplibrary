@@ -136,7 +136,8 @@ void __spmv_csr_vector(const Matrix& A,
     const size_t THREADS_PER_BLOCK  = 128;
     const size_t VECTORS_PER_BLOCK  = THREADS_PER_BLOCK / THREADS_PER_VECTOR;
 
-    const size_t MAX_BLOCKS = cusp::detail::device::arch::max_active_blocks(spmv_csr_vector_kernel<IndexType, ValueType, VECTORS_PER_BLOCK, THREADS_PER_VECTOR, UseCache>, THREADS_PER_BLOCK, (size_t) 0);
+    const size_t MAX_BLOCKS =
+      cusp::detail::device::arch::max_active_blocks(spmv_csr_vector_kernel<IndexType, ValueType, VECTORS_PER_BLOCK, THREADS_PER_VECTOR, UseCache>, THREADS_PER_BLOCK, (size_t) 0);
     const size_t NUM_BLOCKS = std::min<size_t>(MAX_BLOCKS, DIVIDE_INTO(A.num_rows, VECTORS_PER_BLOCK));
 
     if (UseCache)
@@ -185,40 +186,6 @@ void spmv_csr_vector(const Matrix& A,
     }
 
     __spmv_csr_vector<false,32>(A, x, y);
-}
-
-template <typename Matrix,
-          typename Array1,
-          typename Array2,
-          typename ScalarType>
-void spmv_csr_vector_tex(const Matrix& A,
-                         const Array1& x,
-                               Array2& y,
-                         const ScalarType& alpha,
-                         const ScalarType& beta)
-{
-    typedef typename Matrix::index_type IndexType;
-
-    const IndexType nnz_per_row = A.num_entries / A.num_rows;
-
-    if (nnz_per_row <=  2) {
-        __spmv_csr_vector<true, 2>(A, x, y);
-        return;
-    }
-    if (nnz_per_row <=  4) {
-        __spmv_csr_vector<true, 4>(A, x, y);
-        return;
-    }
-    if (nnz_per_row <=  8) {
-        __spmv_csr_vector<true, 8>(A, x, y);
-        return;
-    }
-    if (nnz_per_row <= 16) {
-        __spmv_csr_vector<true,16>(A, x, y);
-        return;
-    }
-
-    __spmv_csr_vector<true,32>(A, x, y);
 }
 
 } // end namespace device
