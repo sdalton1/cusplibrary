@@ -50,11 +50,11 @@ struct maximum : public thrust::binary_function<T,T,T>
 
 // maximum<T> returns the number with the largest real part
 template <typename T>
-struct maximum< thrust::complex<T> >
-    : public thrust::binary_function<thrust::complex<T>,thrust::complex<T>,thrust::complex<T> >
+struct maximum< cusp::complex<T> >
+    : public thrust::binary_function<cusp::complex<T>,cusp::complex<T>,cusp::complex<T> >
 {
     __host__ __device__
-    thrust::complex<T> operator()(thrust::complex<T> x, thrust::complex<T> y)
+    cusp::complex<T> operator()(cusp::complex<T> x, cusp::complex<T> y)
     {
         return thrust::maximum<T>()(x.real(),y.real());
     }
@@ -72,11 +72,11 @@ struct conjugate : public thrust::unary_function<T,T>
 };
 
 template <typename T>
-struct conjugate< thrust::complex<T> >
-    : public thrust::unary_function<thrust::complex<T>,thrust::complex<T> >
+struct conjugate< cusp::complex<T> >
+    : public thrust::unary_function<cusp::complex<T>,cusp::complex<T> >
 {
     __host__ __device__
-    thrust::complex<T> operator()(thrust::complex<T> x)
+    cusp::complex<T> operator()(cusp::complex<T> x)
     {
         return thrust::conj(x);
     }
@@ -208,10 +208,10 @@ struct norm
 };
 
 template <typename T>
-struct norm< thrust::complex<T> >
+struct norm< cusp::complex<T> >
 {
     __host__ __device__
-    float operator()(thrust::complex<T> x)
+    float operator()(cusp::complex<T> x)
     {
         return thrust::norm(x);
     }

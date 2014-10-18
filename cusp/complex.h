@@ -31,6 +31,8 @@
 namespace cusp
 {
 
+using thrust::complex;
+
 template <typename T>
 struct norm_type {
     typedef T type;

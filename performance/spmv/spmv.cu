@@ -1,17 +1,15 @@
-#define CUB_STDERR
-
 #include <cusp/csr_matrix.h>
 #include <cusp/io/matrix_market.h>
 #include <cusp/gallery/poisson.h>
+
+#include <cusp/multiply.h>
+#include <cusp/detail/device/spmv/csr_scalar.h>
 
 #include <cmath>
 #include <iostream>
 #include <map>
 #include <limits>
 #include <string>
-
-#include <cusp/multiply.h>
-#include <cusp/detail/device/spmv/csr_scalar.h>
 
 #include "bytes_per_spmv.h"
 #include "utility.h"
@@ -115,7 +113,7 @@ int main(int argc, char** argv)
     }
     else if (value_type == "complex_float")
     {
-        test_all_formats<int,thrust::complex<float> >(filename);
+        test_all_formats<int,cusp::complex<float> >(filename);
     }
     else if (value_type == "double")
     {

@@ -129,7 +129,7 @@ struct CTASegScan
 // Core segmented reduction code. Supports fast-path and slow-path for intra-CTA
 // segmented reduction. Stores partials to global memory.
 // Callers feed CTASegReduce::ReduceToGlobal values in thread order.
-template<int NT, int VT, bool HalfCapacity, typename T, typename Op>
+template<int NT, int VT, bool HalfCapacity, typename I, typename T, typename Op>
 struct CTASegReduce
 {
     typedef CTASegScan<NT, Op> SegScan;
@@ -149,7 +149,7 @@ struct CTASegReduce
     };
 
     template<typename DestIt>
-    __device__ __forceinline__ static void ReduceToGlobal(const int rows[VT + 1], int total,
+    __device__ __forceinline__ static void ReduceToGlobal(const I rows[VT + 1], int total,
                                            int tidDelta, int startRow, int block, int tid, T data[VT],
                                            DestIt dest_global, T* carryOut_global, T identity, Op op,
                                            Storage& storage) {

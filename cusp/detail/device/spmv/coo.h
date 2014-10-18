@@ -64,7 +64,7 @@ __global__ void CooKernel(
     // Parameterized BlockExchange type for exchanging values between warp-striped -> blocked arrangements
     typedef BlockExchange<ValueType, BLOCK_THREADS, ITEMS_PER_THREAD, true> BlockExchangeValues;
 
-    typedef CTASegReduce<BLOCK_THREADS, ITEMS_PER_THREAD, false, ValueType, thrust::plus<ValueType> > SegReduce;
+    typedef CTASegReduce<BLOCK_THREADS, ITEMS_PER_THREAD, false, IndexType, ValueType, thrust::plus<ValueType> > SegReduce;
 
     // Shared memory type for this threadblock
     struct TempStorage
@@ -191,7 +191,7 @@ __global__ void CooKernel(
           rows[ITEM] -= startRow;
     }
 
-    int tidDelta = DeviceFindSegScanDelta<BLOCK_THREADS>(threadIdx.x, flag, temp_storage.first);
+    int tidDelta = DeviceFindSegScanDelta<BLOCK_THREADS>(threadIdx.x, flag, (int*) temp_storage.first);
     __syncthreads();
 
     total = finishRow - startRow + 1;

@@ -53,7 +53,7 @@ inline void bind_x(const double * x)
 }
 
 
-inline void bind_x(const thrust::complex<float> * x)
+inline void bind_x(const cusp::complex<float> * x)
 {
 #ifdef CUSP_USE_TEXTURE_MEMORY
     size_t offset = size_t(-1);
@@ -66,7 +66,7 @@ inline void bind_x(const thrust::complex<float> * x)
 }
 
 // Use int2 to pull doubles through texture cache
-inline void bind_x(const thrust::complex<double> * x)
+inline void bind_x(const cusp::complex<double> * x)
 {
 #ifdef CUSP_USE_TEXTURE_MEMORY
     size_t offset = size_t(-1);
@@ -96,7 +96,7 @@ inline void unbind_x(const double * x)
     throw cusp::runtime_exception("texture support was not enabled");
 #endif
 }
-inline void unbind_x(const thrust::complex<float> * x)
+inline void unbind_x(const cusp::complex<float> * x)
 {
 #ifdef CUSP_USE_TEXTURE_MEMORY
     CUDA_SAFE_CALL(cudaUnbindTexture(tex_x_float));
@@ -105,7 +105,7 @@ inline void unbind_x(const thrust::complex<float> * x)
 #endif
 }
 
-inline void unbind_x(const thrust::complex<double> * x)
+inline void unbind_x(const cusp::complex<double> * x)
 {
 #ifdef CUSP_USE_TEXTURE_MEMORY
     CUDA_SAFE_CALL(cudaUnbindTexture(tex_x_double));
@@ -146,18 +146,18 @@ __inline__ __device__ double fetch_x(const int& i, const double * x)
 
 
 template <bool UseCache>
-__inline__ __device__ thrust::complex<float> fetch_x(const int& i, const thrust::complex<float> * x)
+__inline__ __device__ cusp::complex<float> fetch_x(const int& i, const cusp::complex<float> * x)
 {
 #ifdef CUSP_USE_TEXTURE_MEMORY
     if (UseCache)
-        return thrust::complex<float>(tex1Dfetch(tex_x_float, i*2),tex1Dfetch(tex_x_float, i*2+1));
+        return cusp::complex<float>(tex1Dfetch(tex_x_float, i*2),tex1Dfetch(tex_x_float, i*2+1));
     else
 #endif
         return x[i];
 }
 
 template <bool UseCache>
-__inline__ __device__ thrust::complex<double> fetch_x(const int& i, const thrust::complex<double> * x)
+__inline__ __device__ cusp::complex<double> fetch_x(const int& i, const cusp::complex<double> * x)
 {
 #if __CUDA_ARCH__ >= 130
 #ifdef CUSP_USE_TEXTURE_MEMORY
@@ -166,13 +166,13 @@ __inline__ __device__ thrust::complex<double> fetch_x(const int& i, const thrust
     {
         int2 vr = tex1Dfetch(tex_x_double, i*2);
         int2 vi = tex1Dfetch(tex_x_double, i*2+1);
-        return thrust::complex<double<(__hiloint2double(vr.y, vr.x),__hiloint2double(vi.y, vi.x));
+        return cusp::complex<double<(__hiloint2double(vr.y, vr.x),__hiloint2double(vi.y, vi.x));
     }
     else
 #endif // CUSP_USE_TEXTURE_MEMORY
         return x[i];
 #else
-    return thrust::complex<double>(1.0, 0.0);
+    return cusp::complex<double>(1.0, 0.0);
 #endif
 }
 
