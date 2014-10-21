@@ -52,19 +52,15 @@ struct minimum_space_impl<any_memory,any_memory>   {
 template<typename T, typename MemorySpace>
 struct default_memory_allocator
         : thrust::detail::eval_if<
-        thrust::detail::is_convertible<MemorySpace, host_memory>::value,
+              thrust::detail::is_convertible<MemorySpace, host_memory>::value,
+              thrust::detail::identity_< std::allocator<T> >,
 
-        thrust::detail::identity_< std::allocator<T> >,
+              thrust::detail::eval_if<
+              thrust::detail::is_convertible<MemorySpace, device_memory>::value,
+              thrust::detail::identity_< thrust::device_malloc_allocator<T> >,
 
-        // XXX add backend-specific allocators here?
-
-        thrust::detail::eval_if<
-        thrust::detail::is_convertible<MemorySpace, device_memory>::value,
-
-        thrust::detail::identity_< thrust::device_malloc_allocator<T> >,
-
-        thrust::detail::identity_< MemorySpace >
-        >
+              thrust::detail::identity_< MemorySpace >
+          >
         >
 {};
 
