@@ -16,17 +16,25 @@
 
 #pragma once
 
-#include <cusp/copy.h>
+#include <cusp/convert.h>
 
 namespace cusp
 {
 
 template <typename SourceType, typename DestinationType>
-void copy(grapple_system &exec,
-          const SourceType& src, DestinationType& dst)
+void convert(grapple_system &exec,
+             const SourceType& src, DestinationType& dst)
 {
-    exec.start(CUSP_COPY);
-    cusp::copy(exec.policy(), src, dst);
+    using thrust::system::detail::generic::select_system;
+
+    typedef typename SourceType::memory_space      System1;
+    typedef typename DestinationType::memory_space System2;
+
+    System1 system1;
+    System2 system2;
+
+    exec.start(CUSP_CONVERT);
+    cusp::convert(exec.policy(select_system(system1,system2)), src, dst);
     exec.stop();
 }
 

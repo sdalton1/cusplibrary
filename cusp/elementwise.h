@@ -102,6 +102,15 @@ void elementwise(const MatrixType1& A,
                  MatrixType3& C,
                  BinaryFunction op);
 
+/*! \cond */
+template <typename DerivedPolicy,
+          typename MatrixType1, typename MatrixType2, typename MatrixType3>
+void add(const thrust::detail::execution_policy_base<DerivedPolicy>& exec,
+         const MatrixType1& A,
+         const MatrixType2& B,
+               MatrixType3& C);
+/*! \endcond */
+
 /**
  * \brief Compute the sum of two matrices
  *
@@ -156,6 +165,15 @@ template <typename MatrixType1,
 void add(const MatrixType1& A,
          const MatrixType2& B,
          MatrixType3& C);
+
+/*! \cond */
+template <typename DerivedPolicy,
+          typename MatrixType1, typename MatrixType2, typename MatrixType3>
+void subtract(const thrust::detail::execution_policy_base<DerivedPolicy>& exec,
+              const MatrixType1& A,
+              const MatrixType2& B,
+                    MatrixType3& C);
+/*! \endcond */
 
 /**
  * \brief Compute the difference of two matrices

@@ -104,26 +104,62 @@ void elementwise(const MatrixType1& A, const MatrixType2& B, MatrixType3& C,
     cusp::elementwise(select_system(system1,system2,system3), A, B, C, op);
 }
 
-template <typename MatrixType1, typename MatrixType2, typename MatrixType3>
-void add(const MatrixType1& A, const MatrixType2& B, MatrixType3& C)
+template <typename DerivedPolicy,
+          typename MatrixType1, typename MatrixType2, typename MatrixType3>
+void add(const thrust::detail::execution_policy_base<DerivedPolicy>& exec,
+         const MatrixType1& A, const MatrixType2& B, MatrixType3& C)
 {
     typedef typename MatrixType1::value_type   ValueType;
     typedef thrust::plus<ValueType>            Op;
 
     Op op;
 
-    cusp::elementwise(A, B, C, op);
+    cusp::elementwise(exec, A, B, C, op);
 }
 
 template <typename MatrixType1, typename MatrixType2, typename MatrixType3>
-void subtract(const MatrixType1& A, const MatrixType2& B, MatrixType3& C)
+void add(const MatrixType1& A, const MatrixType2& B, MatrixType3& C)
+{
+    using thrust::system::detail::generic::select_system;
+
+    typedef typename MatrixType1::memory_space System1;
+    typedef typename MatrixType2::memory_space System2;
+    typedef typename MatrixType3::memory_space System3;
+
+    System1 system1;
+    System2 system2;
+    System3 system3;
+
+    cusp::add(select_system(system1,system2,system3), A, B, C);
+}
+
+template <typename DerivedPolicy,
+          typename MatrixType1, typename MatrixType2, typename MatrixType3>
+void subtract(const thrust::detail::execution_policy_base<DerivedPolicy>& exec,
+              const MatrixType1& A, const MatrixType2& B, MatrixType3& C)
 {
     typedef typename MatrixType1::value_type   ValueType;
     typedef thrust::minus<ValueType>           Op;
 
     Op op;
 
-    cusp::elementwise(A, B, C, op);
+    cusp::elementwise(exec, A, B, C, op);
+}
+
+template <typename MatrixType1, typename MatrixType2, typename MatrixType3>
+void subtract(const MatrixType1& A, const MatrixType2& B, MatrixType3& C)
+{
+    using thrust::system::detail::generic::select_system;
+
+    typedef typename MatrixType1::memory_space System1;
+    typedef typename MatrixType2::memory_space System2;
+    typedef typename MatrixType3::memory_space System3;
+
+    System1 system1;
+    System2 system2;
+    System3 system3;
+
+    cusp::subtract(select_system(system1,system2,system3), A, B, C);
 }
 
 } // end namespace cusp

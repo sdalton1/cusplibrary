@@ -408,7 +408,7 @@ size_t compute_max_entries_per_row(const thrust::detail::execution_policy_base<D
                                    const ArrayType& row_offsets)
 {
     return detail::compute_max_entries_per_row(thrust::detail::derived_cast(thrust::detail::strip_const(exec)),
-            row_offsets);
+                                               row_offsets);
 }
 
 template <typename ArrayType>
