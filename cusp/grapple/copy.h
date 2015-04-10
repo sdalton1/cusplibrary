@@ -25,8 +25,16 @@ template <typename SourceType, typename DestinationType>
 void copy(grapple_system &exec,
           const SourceType& src, DestinationType& dst)
 {
+    using thrust::system::detail::generic::select_system;
+
+    typedef typename SourceType::memory_space      System1;
+    typedef typename DestinationType::memory_space System2;
+
+    System1 system1;
+    System2 system2;
+
     exec.start(CUSP_COPY);
-    cusp::copy(exec.policy(), src, dst);
+    cusp::copy(exec.policy(select_system(system1,system2)), src, dst);
     exec.stop();
 }
 
