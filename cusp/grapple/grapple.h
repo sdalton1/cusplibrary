@@ -120,5 +120,6 @@ static cusp_grapple_init initialize_cusp_grapple;
 #include "format_utils.h"
 #include "multiply.h"
 #include "sort.h"
+#include "temporary_array.h"
 #include "transpose.h"
 

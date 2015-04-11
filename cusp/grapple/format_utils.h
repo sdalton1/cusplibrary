@@ -27,7 +27,8 @@ void offsets_to_indices(grapple_system &exec,
                         IndexArray& indices)
 {
     exec.start(CUSP_OFFSETS_TO_INDICES);
-    cusp::offsets_to_indices(exec.policy(get_system(offsets.begin(),indices.begin())), offsets, indices);
+    // cusp::offsets_to_indices(exec.policy(get_system(offsets.begin(),indices.begin())), offsets, indices);
+    cusp::offsets_to_indices(exec.policy(), offsets, indices);
     exec.stop();
 }
 
@@ -37,7 +38,8 @@ void indices_to_offsets(grapple_system &exec,
                         OffsetArray& offsets)
 {
     exec.start(CUSP_INDICES_TO_OFFSETS);
-    cusp::indices_to_offsets(exec.policy(get_system(indices.begin(),offsets.begin())), indices, offsets);
+    // cusp::indices_to_offsets(exec.policy(get_system(indices.begin(),offsets.begin())), indices, offsets);
+    cusp::indices_to_offsets(exec.policy(), indices, offsets);
     exec.stop();
 }
 
@@ -46,7 +48,8 @@ size_t compute_max_entries_per_row(grapple_system &exec,
                                    const ArrayType& row_offsets)
 {
     exec.start(CUSP_COMPUTE_MAX_ENTRIES_PER_ROW);
-    size_t ret = cusp::compute_max_entries_per_row(exec.policy(get_system(row_offsets.begin())), row_offsets);
+    // size_t ret = cusp::compute_max_entries_per_row(exec.policy(get_system(row_offsets.begin())), row_offsets);
+    size_t ret = cusp::compute_max_entries_per_row(exec.policy(), row_offsets);
     exec.stop();
 
     return ret;
@@ -59,7 +62,8 @@ size_t compute_optimal_entries_per_row(grapple_system &exec,
                                        size_t breakeven_threshold = 4096)
 {
     exec.start(CUSP_COMPUTE_OPTIMAL_ENTRIES_PER_ROW);
-    size_t ret = cusp::compute_optimal_entries_per_row(exec.policy(get_system(row_offsets.begin())), row_offsets, relative_speed, breakeven_threshold);
+    // size_t ret = cusp::compute_optimal_entries_per_row(exec.policy(get_system(row_offsets.begin())), row_offsets, relative_speed, breakeven_threshold);
+    size_t ret = cusp::compute_optimal_entries_per_row(exec.policy(), row_offsets, relative_speed, breakeven_threshold);
     exec.stop();
 
     return ret;
@@ -79,7 +83,8 @@ void extract_diagonal(grapple_system &exec,
     System2 system2;
 
     exec.start(CUSP_EXTRACT_DIAGONAL);
-    cusp::extract_diagonal(exec.policy(select_system(system1,system2)), A, output);
+    // cusp::extract_diagonal(exec.policy(select_system(system1,system2)), A, output);
+    cusp::extract_diagonal(exec.policy(), A, output);
     exec.stop();
 }
 
@@ -91,8 +96,9 @@ size_t count_diagonals(grapple_system &exec,
                        const ArrayType2& column_indices)
 {
     exec.start(CUSP_COUNT_DIAGONALS);
-    size_t ret = cusp::count_diagonals(exec.policy(get_system(row_indices.begin(), column_indices.begin())),
-                                       num_rows, num_cols, row_indices, column_indices);
+    // size_t ret = cusp::count_diagonals(exec.policy(get_system(row_indices.begin(), column_indices.begin())),
+    //                                    num_rows, num_cols, row_indices, column_indices);
+    size_t ret = cusp::count_diagonals(exec.policy(), num_rows, num_cols, row_indices, column_indices);
     exec.stop();
 
     return ret;
