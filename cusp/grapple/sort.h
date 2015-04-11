@@ -27,7 +27,7 @@ void counting_sort(grapple_system &exec,
                    typename ArrayType::value_type min, typename ArrayType::value_type max)
 {
     exec.start(CUSP_COUNTING_SORT);
-    cusp::counting_sort(exec.policy(get_system(keys.begin())), keys, min, max);
+    cusp::counting_sort(exec.policy(), keys, min, max);
     exec.stop();
 }
 
@@ -37,7 +37,7 @@ void counting_sort_by_key(grapple_system &exec,
                           typename ArrayType1::value_type min, typename ArrayType1::value_type max)
 {
     exec.start(CUSP_COUNTING_SORT_BY_KEY);
-    cusp::counting_sort_by_key(exec.policy(get_system(keys.begin(), vals.begin())), keys, vals, min, max);
+    cusp::counting_sort_by_key(exec.policy(), keys, vals, min, max);
     exec.stop();
 }
 
@@ -47,8 +47,7 @@ void sort_by_row(grapple_system &exec,
                  const int min_row = -1, const int max_row = -1)
 {
     exec.start(CUSP_SORT_BY_ROW);
-    cusp::sort_by_row(exec.policy(get_system(row_indices.begin(), column_indices.begin(), values.begin())),
-                      row_indices, column_indices, values, min_row, max_row);
+    cusp::sort_by_row(exec.policy(), row_indices, column_indices, values, min_row, max_row);
     exec.stop();
 }
 
@@ -59,8 +58,7 @@ void sort_by_row_and_column(grapple_system &exec,
                             const int min_col = -1, const int max_col = -1)
 {
     exec.start(CUSP_SORT_BY_ROW_AND_COLUMN);
-    cusp::sort_by_row_and_column(exec.policy(get_system(row_indices.begin(), column_indices.begin(), values.begin())),
-                                 row_indices, column_indices, values, min_row, max_row, min_col, max_col);
+    cusp::sort_by_row_and_column(exec.policy(), row_indices, column_indices, values, min_row, max_row, min_col, max_col);
     exec.stop();
 }
 

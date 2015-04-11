@@ -32,7 +32,7 @@ void axpy(grapple_system &exec,
           ScalarType alpha)
 {
     exec.start(CUSP_BLAS_AXPY);
-    cusp::blas::axpy(exec.policy(get_system(x.begin(), y.begin())), x, y, alpha);
+    cusp::blas::axpy(exec.policy(), x, y, alpha);
     exec.stop();
 }
 
@@ -49,7 +49,7 @@ void axpby(grapple_system &exec,
            ScalarType2 beta)
 {
     exec.start(CUSP_BLAS_AXPBY);
-    cusp::blas::axpby(exec.policy(get_system(x.begin(), y.begin(), output.begin())), x, y, alpha, beta);
+    cusp::blas::axpby(exec.policy(), x, y, alpha, beta);
     exec.stop();
 }
 
@@ -70,7 +70,7 @@ void axpbypcz(grapple_system &exec,
               ScalarType3 gamma)
 {
     exec.start(CUSP_BLAS_AXPBYPCZ);
-    cusp::blas::axpbypcz(exec.policy(get_system(x.begin(), y.begin(), z.begin(), output.begin())), x, y, z, alpha, beta, gamma);
+    cusp::blas::axpbypcz(exec.policy(), x, y, z, alpha, beta, gamma);
     exec.stop();
 }
 
@@ -83,7 +83,7 @@ void xmy(grapple_system &exec,
          Array3& output)
 {
     exec.start(CUSP_BLAS_XMY);
-    cusp::blas::xmy(exec.policy(get_system(x.begin(), y.begin(), output.begin())), x, y, output);
+    cusp::blas::xmy(exec.policy(), x, y, output);
     exec.stop();
 }
 
@@ -95,7 +95,7 @@ void copy(grapple_system &exec,
           const Array2& y)
 {
     exec.start(CUSP_BLAS_COPY);
-    cusp::blas::copy(exec.policy(get_system(x.begin(), y.begin())), x, y);
+    cusp::blas::copy(exec.policy(), x, y);
     exec.stop();
 }
 
@@ -107,7 +107,7 @@ dot(grapple_system &exec,
     const Array2& y)
 {
     exec.start(CUSP_BLAS_DOT);
-    typename Array1::value_type ret = cusp::blas::dot(exec.policy(get_system(x.begin(), y.begin())), x, y);
+    typename Array1::value_type ret = cusp::blas::dot(exec.policy(), x, y);
     exec.stop();
 
     return ret;
@@ -121,7 +121,7 @@ dotc(grapple_system &exec,
      const Array2& y)
 {
     exec.start(CUSP_BLAS_DOTC);
-    typename Array1::value_type ret = cusp::blas::dotc(exec.policy(get_system(x.begin(), y.begin())), x, y);
+    typename Array1::value_type ret = cusp::blas::dotc(exec.policy(), x, y);
     exec.stop();
 
     return ret;
@@ -134,7 +134,7 @@ void fill(grapple_system &exec,
           ScalarType alpha)
 {
     exec.start(CUSP_BLAS_FILL);
-    cusp::blas::fill(exec.policy(get_system(array.begin())), array, alpha);
+    cusp::blas::fill(exec.policy(), array, alpha);
     exec.stop();
 }
 
@@ -146,7 +146,7 @@ nrm1(grapple_system &exec,
     typedef typename cusp::detail::norm_type<typename Array::value_type>::type ValueType;
 
     exec.start(CUSP_BLAS_NRM1);
-    ValueType ret = cusp::blas::nrm1(exec.policy(get_system(array.begin())), array);
+    ValueType ret = cusp::blas::nrm1(exec.policy(), array);
     exec.stop();
 
     return ret;
@@ -160,7 +160,7 @@ nrm2(grapple_system &exec,
     typedef typename cusp::detail::norm_type<typename Array::value_type>::type ValueType;
 
     exec.start(CUSP_BLAS_NRM2);
-    ValueType ret = cusp::blas::nrm2(exec.policy(get_system(array.begin())), array);
+    ValueType ret = cusp::blas::nrm2(exec.policy(), array);
     exec.stop();
 
     return ret;
@@ -174,7 +174,7 @@ nrmmax(grapple_system &exec,
     typedef typename Array::value_type ValueType;
 
     exec.start(CUSP_BLAS_NRMMAX);
-    ValueType ret = cusp::blas::nrmmax(exec.policy(get_system(array.begin())), array);
+    ValueType ret = cusp::blas::nrmmax(exec.policy(), array);
     exec.stop();
 
     return ret;
@@ -187,7 +187,7 @@ void scal(grapple_system &exec,
           ScalarType alpha)
 {
     exec.start(CUSP_BLAS_SCAL);
-    cusp::blas::scal(exec.policy(get_system(x.begin())), x, alpha);
+    cusp::blas::scal(exec.policy(), x, alpha);
     exec.stop();
 }
 
@@ -200,7 +200,7 @@ void gemv(grapple_system &exec,
                 Array2&  y)
 {
     exec.start(CUSP_BLAS_GEMV);
-    cusp::blas::gemv(exec.policy(get_system(A.values.begin(), x.begin(), y.begin())), A, x, y);
+    cusp::blas::gemv(exec.policy(), A, x, y);
     exec.stop();
 }
 
@@ -213,7 +213,7 @@ void gemm(grapple_system &exec,
                 Array2d3& C)
 {
     exec.start(CUSP_BLAS_GEMM);
-    cusp::blas::gemm(exec.policy(get_system(A.values.begin(), B.values.begin(), C.values.begin())), A, B, C);
+    cusp::blas::gemm(exec.policy(), A, B, C);
     exec.stop();
 }
 

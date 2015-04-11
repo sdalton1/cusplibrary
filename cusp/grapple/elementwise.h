@@ -28,18 +28,8 @@ void elementwise(grapple_system& exec,
                  MatrixType3& C,
                  BinaryFunction op)
 {
-    using thrust::system::detail::generic::select_system;
-
-    typedef typename MatrixType1::memory_space System1;
-    typedef typename MatrixType2::memory_space System2;
-    typedef typename MatrixType3::memory_space System3;
-
-    System1 system1;
-    System2 system2;
-    System3 system3;
-
     exec.start(CUSP_ELEMENTWISE);
-    cusp::elementwise(exec.policy(select_system(system1,system2,system3)), A, B, C, op);
+    cusp::elementwise(exec.policy(), A, B, C, op);
     exec.stop();
 }
 
@@ -49,18 +39,8 @@ void add(grapple_system& exec,
          const MatrixType2& B,
                MatrixType3& C)
 {
-    using thrust::system::detail::generic::select_system;
-
-    typedef typename MatrixType1::memory_space System1;
-    typedef typename MatrixType2::memory_space System2;
-    typedef typename MatrixType3::memory_space System3;
-
-    System1 system1;
-    System2 system2;
-    System3 system3;
-
     exec.start(CUSP_ADD);
-    cusp::add(exec.policy(select_system(system1,system2,system3)), A, B, C);
+    cusp::add(exec.policy(), A, B, C);
     exec.stop();
 }
 
@@ -70,18 +50,8 @@ void subtract(grapple_system& exec,
               const MatrixType2& B,
                     MatrixType3& C)
 {
-    using thrust::system::detail::generic::select_system;
-
-    typedef typename MatrixType1::memory_space System1;
-    typedef typename MatrixType2::memory_space System2;
-    typedef typename MatrixType3::memory_space System3;
-
-    System1 system1;
-    System2 system2;
-    System3 system3;
-
     exec.start(CUSP_SUBTRACT);
-    cusp::subtract(exec.policy(select_system(system1,system2,system3)), A, B, C);
+    cusp::subtract(exec.policy(), A, B, C);
     exec.stop();
 }
 

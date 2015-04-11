@@ -25,16 +25,8 @@ template <typename MatrixType1, typename MatrixType2>
 void transpose(grapple_system &exec,
                const MatrixType1& A, MatrixType2& At)
 {
-    using thrust::system::detail::generic::select_system;
-
-    typedef typename MatrixType1::memory_space System1;
-    typedef typename MatrixType2::memory_space System2;
-
-    System1 system1;
-    System2 system2;
-
     exec.start(CUSP_TRANSPOSE);
-    cusp::transpose(exec.policy(select_system(system1,system2)), A, At);
+    cusp::transpose(exec.policy(), A, At);
     exec.stop();
 }
 

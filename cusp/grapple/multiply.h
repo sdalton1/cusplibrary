@@ -29,18 +29,8 @@ void multiply(grapple_system &exec,
               const MatrixOrVector1& B,
               MatrixOrVector2& C)
 {
-    using thrust::system::detail::generic::select_system;
-
-    typedef typename LinearOperator::memory_space  System1;
-    typedef typename MatrixOrVector1::memory_space System2;
-    typedef typename MatrixOrVector2::memory_space System3;
-
-    System1 system1;
-    System2 system2;
-    System3 system3;
-
     exec.start(CUSP_MULTIPLY);
-    cusp::multiply(exec.policy(select_system(system1,system2,system3)), A, B, C);
+    cusp::multiply(exec.policy(), A, B, C);
     exec.stop();
 }
 
@@ -58,20 +48,8 @@ void generalized_spmv(grapple_system &exec,
                       BinaryFunction1 combine,
                       BinaryFunction2 reduce)
 {
-    using thrust::system::detail::generic::select_system;
-
-    typedef typename LinearOperator::memory_space System1;
-    typedef typename Vector1::memory_space        System2;
-    typedef typename Vector2::memory_space        System3;
-    typedef typename Vector3::memory_space        System4;
-
-    System1 system1;
-    System2 system2;
-    System3 system3;
-    System4 system4;
-
     exec.start(CUSP_GENERALIZED_SPMV);
-    cusp::generalized_spmv(exec.policy(select_system(system1,system2,system3,system4)), A, x, y, z, combine, reduce);
+    cusp::generalized_spmv(exec.policy(), A, x, y, z, combine, reduce);
     exec.stop();
 }
 

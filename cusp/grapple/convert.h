@@ -25,16 +25,8 @@ template <typename SourceType, typename DestinationType>
 void convert(grapple_system &exec,
              const SourceType& src, DestinationType& dst)
 {
-    using thrust::system::detail::generic::select_system;
-
-    typedef typename SourceType::memory_space      System1;
-    typedef typename DestinationType::memory_space System2;
-
-    System1 system1;
-    System2 system2;
-
     exec.start(CUSP_CONVERT);
-    cusp::convert(exec.policy(select_system(system1,system2)), src, dst);
+    cusp::convert(exec.policy(), src, dst);
     exec.stop();
 }
 
