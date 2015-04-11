@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <cstdlib>
 #include "error_utils.cuh"
 #include "cuda_properties.cuh"
 
@@ -251,7 +252,7 @@ public:
 
 		do {
 
-			unsigned long long *h_stat = (unsigned long long*) malloc(stat_bytes);
+			unsigned long long *h_stat = (unsigned long long*) std::malloc(stat_bytes);
 
 			// Save current gpu
 			int current_gpu;

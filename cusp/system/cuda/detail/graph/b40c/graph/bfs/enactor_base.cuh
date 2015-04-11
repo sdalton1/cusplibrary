@@ -38,6 +38,8 @@
 
 #include "csr_problem.cuh"
 
+#include <cstdlib>
+
 B40C_NS_PREFIX
 
 namespace b40c {
@@ -112,7 +114,7 @@ protected:
 		size_t num_elements)
 	{
 		// Allocate array on host and copy back
-		T *h_data = (T*) malloc(num_elements * sizeof(T));
+		T *h_data = (T*) std::malloc(num_elements * sizeof(T));
 		cudaMemcpy(h_data, d_data, sizeof(T) * num_elements, cudaMemcpyDeviceToHost);
 
 		// Display data
