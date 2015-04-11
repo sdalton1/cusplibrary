@@ -43,10 +43,8 @@ template<typename T, typename Space>
 
   public:
 
-    __host__ __device__
     temporary_array(thrust::execution_policy<grapple_system> &system) : super_t(system) {};
 
-    __host__ __device__
     temporary_array(thrust::execution_policy<grapple_system> &system, size_type n)
       : super_t(select_system(space), n)
     {
@@ -55,30 +53,25 @@ template<typename T, typename Space>
     }
 
     // provide a kill-switch to explicitly avoid initialization
-    __host__ __device__
     temporary_array(int uninit, thrust::execution_policy<grapple_system> &system, size_type n) : super_t(uninit, system, n) {};
 
     template<typename InputIterator>
-    __host__ __device__
     temporary_array(thrust::execution_policy<grapple_system> &system,
                     InputIterator first,
                     size_type n) : super_t(system, first, n) {}
 
     template<typename InputIterator, typename InputSystem>
-    __host__ __device__
     temporary_array(thrust::execution_policy<grapple_system> &system,
                     thrust::execution_policy<InputSystem> &input_system,
                     InputIterator first,
                     size_type n) : super_t(system, input_system, first, n) {}
 
     template<typename InputIterator>
-    __host__ __device__
     temporary_array(thrust::execution_policy<grapple_system> &system,
                     InputIterator first,
                     InputIterator last) : super_t(system, first, last) {}
 
     template<typename InputSystem, typename InputIterator>
-    __host__ __device__
     temporary_array(thrust::execution_policy<grapple_system> &system,
                     thrust::execution_policy<InputSystem> &input_system,
                     InputIterator first,
