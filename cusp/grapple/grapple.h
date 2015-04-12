@@ -36,6 +36,8 @@ enum
     CUSP_BLAS_GEMV,
     CUSP_BLAS_GEMM,
 
+    CUSP_KRYLOV_CG,
+
     CUSP_CONVERT,
 
     CUSP_COPY,
@@ -85,6 +87,8 @@ struct cusp_grapple_init
         grapple_thrust_map.insert(CUSP_BLAS_GEMV, "blas::gemv");
         grapple_thrust_map.insert(CUSP_BLAS_GEMM, "blas::gemm");
 
+        grapple_thrust_map.insert(CUSP_KRYLOV_CG, "krylov::cg");
+
         grapple_thrust_map.insert(CUSP_CONVERT, "convert");
 
         grapple_thrust_map.insert(CUSP_COPY, "copy");
@@ -114,6 +118,8 @@ struct cusp_grapple_init
 static cusp_grapple_init initialize_cusp_grapple;
 
 #include "blas.h"
+#include "cg.h"
+
 #include "convert.h"
 #include "copy.h"
 #include "elementwise.h"
