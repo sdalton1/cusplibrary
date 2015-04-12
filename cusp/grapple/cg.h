@@ -23,7 +23,8 @@ namespace cusp
 namespace krylov
 {
 
-template <class LinearOperator, class Vector>
+template <class LinearOperator,
+          class Vector>
 void cg(grapple_system &exec,
         LinearOperator& A,
         Vector& x,
@@ -34,7 +35,9 @@ void cg(grapple_system &exec,
     exec.stop();
 }
 
-template <class LinearOperator, class Vector, class Monitor>
+template <class LinearOperator,
+          class Vector,
+          class Monitor>
 void cg(grapple_system &exec,
         LinearOperator& A,
         Vector& x,

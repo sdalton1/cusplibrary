@@ -49,7 +49,7 @@ void axpby(grapple_system &exec,
            ScalarType2 beta)
 {
     exec.start(CUSP_BLAS_AXPBY);
-    cusp::blas::axpby(exec.policy(), x, y, alpha, beta);
+    cusp::blas::axpby(exec.policy(), x, y, output, alpha, beta);
     exec.stop();
 }
 
@@ -70,7 +70,7 @@ void axpbypcz(grapple_system &exec,
               ScalarType3 gamma)
 {
     exec.start(CUSP_BLAS_AXPBYPCZ);
-    cusp::blas::axpbypcz(exec.policy(), x, y, z, alpha, beta, gamma);
+    cusp::blas::axpbypcz(exec.policy(), x, y, z, output, alpha, beta, gamma);
     exec.stop();
 }
 

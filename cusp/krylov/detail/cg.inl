@@ -37,7 +37,7 @@ template <typename DerivedPolicy,
           class Vector,
           class Monitor,
           class Preconditioner>
-void cg(thrust::execution_policy<DerivedPolicy> &exec,
+void cg(thrust::execution_policy<DerivedPolicy> &exec_,
         LinearOperator& A,
         Vector& x,
         Vector& b,
@@ -48,8 +48,10 @@ void cg(thrust::execution_policy<DerivedPolicy> &exec,
     typedef typename LinearOperator::memory_space MemorySpace;
 
     typedef cusp::detail::temporary_array<ValueType, MemorySpace, DerivedPolicy> TempArray;
-    typedef typename TempArray::iterator TempIterator;
+    typedef typename TempArray::iterator     TempIterator;
     typedef cusp::array1d_view<TempIterator> TempArrayView;
+
+    DerivedPolicy& exec = thrust::detail::derived_cast(exec_);
 
     assert(A.num_rows == A.num_cols);        // sanity check
 
@@ -70,7 +72,7 @@ void cg(thrust::execution_policy<DerivedPolicy> &exec,
     cusp::multiply(exec, A, x, y);
 
     // r <- b - A*x
-    blas::axpby(exec, b, y, r, ValueType(1), ValueType(-1));
+    cusp::blas::axpby(exec, b, y, r, ValueType(1), ValueType(-1));
 
     // z <- M*r
     cusp::multiply(exec, M, r, z);
@@ -162,7 +164,7 @@ void cg(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
 
     cusp::identity_operator<ValueType,MemorySpace> M(A.num_rows, A.num_cols);
 
-    cusp::krylov::cg(exec, A, x, b, monitor, M);
+    cusp::krylov::cg(thrust::detail::derived_cast(thrust::detail::strip_const(exec)), A, x, b, monitor, M);
 }
 
 template <class LinearOperator,

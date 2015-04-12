@@ -81,12 +81,7 @@ void axpby(const Array1& x,
            ScalarType1 alpha,
            ScalarType2 beta)
 {
-    cusp::assert_same_dimensions(x, y, z);
-
-    size_t N = x.size();
-    thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin())),
-                     thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin())) + N,
-                     cusp::detail::AXPBY<ScalarType1,ScalarType2>(alpha, beta));
+    cusp::blas::axpby(x, y, z, alpha, beta);
 }
 
 template <typename DerivedPolicy,
@@ -98,11 +93,17 @@ template <typename DerivedPolicy,
 void axpby(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
            const Array1& x,
            const Array2& y,
-           Array3& output,
+           Array3& z,
            ScalarType1 alpha,
            ScalarType2 beta)
 {
-    cusp::blas::axpby(x, y, output, alpha, beta);
+    cusp::assert_same_dimensions(x, y, z);
+
+    size_t N = x.size();
+    thrust::for_each(exec,
+                     thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin())),
+                     thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin())) + N,
+                     cusp::detail::AXPBY<ScalarType1,ScalarType2>(alpha, beta));
 }
 
 template <typename Array1,
@@ -120,12 +121,7 @@ void axpbypcz(const Array1& x,
               ScalarType2 beta,
               ScalarType3 gamma)
 {
-    cusp::assert_same_dimensions(x, y, z, output);
-
-    size_t N = x.size();
-    thrust::for_each(thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin(), output.begin())),
-                     thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin(), output.begin())) + N,
-                     cusp::detail::AXPBYPCZ<ScalarType1,ScalarType2,ScalarType3>(alpha, beta, gamma));
+    cusp::blas::axpbypcz(x, y, z, output, alpha, beta, gamma);
 }
 
 template <typename DerivedPolicy,
@@ -145,7 +141,13 @@ void axpbypcz(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
               ScalarType2 beta,
               ScalarType3 gamma)
 {
-    cusp::blas::axpbypcz(x, y, z, output, alpha, beta, gamma);
+    cusp::assert_same_dimensions(x, y, z, output);
+
+    size_t N = x.size();
+    thrust::for_each(exec,
+                     thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin(), output.begin())),
+                     thrust::make_zip_iterator(thrust::make_tuple(x.begin(), y.begin(), z.begin(), output.begin())) + N,
+                     cusp::detail::AXPBYPCZ<ScalarType1,ScalarType2,ScalarType3>(alpha, beta, gamma));
 }
 
 template <typename Array1,
@@ -155,10 +157,7 @@ void xmy(const Array1& x,
          const Array2& y,
          Array3& output)
 {
-    typedef typename Array3::value_type ValueType;
-
-    cusp::assert_same_dimensions(x, y, output);
-    thrust::transform(x.begin(), x.end(), y.begin(), output.begin(), cusp::detail::XMY<ValueType>());
+    cusp::blas::xmy(x,y,output);
 }
 
 template <typename DerivedPolicy,
@@ -170,7 +169,11 @@ void xmy(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
          const Array2& y,
          Array3& output)
 {
-    cusp::blas::xmy(x,y,output);
+    typedef typename Array3::value_type ValueType;
+
+    cusp::assert_same_dimensions(x, y, output);
+
+    thrust::transform(exec, x.begin(), x.end(), y.begin(), output.begin(), cusp::detail::XMY<ValueType>());
 }
 
 template <typename Array1,
@@ -178,8 +181,7 @@ template <typename Array1,
 void copy(const Array1& x,
           Array2& y)
 {
-    cusp::assert_same_dimensions(x, y);
-    thrust::copy(x.begin(), x.end(), y.begin());
+    cusp::blas::copy(x,y);
 }
 
 template <typename DerivedPolicy,
@@ -189,7 +191,9 @@ void copy(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
           const Array1& x,
           Array2& y)
 {
-    cusp::blas::copy(x,y);
+    cusp::assert_same_dimensions(x, y);
+
+    thrust::copy(exec, x.begin(), x.end(), y.begin());
 }
 
 template <typename Array1,
@@ -198,6 +202,7 @@ void copy(const Array1& x,
           cusp::array1d_view<RandomAccessIterator> y)
 {
     cusp::assert_same_dimensions(x, y);
+
     thrust::copy(x.begin(), x.end(), y.begin());
 }
 
@@ -221,12 +226,7 @@ typename Array1::value_type
 dot(const Array1& x,
     const Array2& y)
 {
-    cusp::assert_same_dimensions(x, y);
-
-    typedef typename Array1::value_type ValueType;
-    typedef typename Array1::memory_space MemorySpace;
-    blas_policy<ValueType,MemorySpace> policy;
-    return cusp::blas::dot(policy, x, y);
+    return cusp::blas::dot(x, y);
 }
 
 template <typename DerivedPolicy,
@@ -237,7 +237,12 @@ dot(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
     const Array1& x,
     const Array2& y)
 {
-    return cusp::blas::dot(x, y);
+    cusp::assert_same_dimensions(x, y);
+
+    typedef typename Array1::value_type ValueType;
+    typedef typename Array1::memory_space MemorySpace;
+    blas_policy<ValueType,MemorySpace> policy;
+    return cusp::blas::dot(policy, x, y);
 }
 
 // TODO properly harmonize heterogenous types
@@ -283,15 +288,7 @@ dotc(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
 template <typename ArrayType,
           typename ScalarType>
 void fill(ArrayType& x,
-          const ScalarType alpha)
-{
-    thrust::fill(x.begin(), x.end(), alpha);
-}
-
-template <typename RandomAccessIterator,
-          typename ScalarType>
-void fill(cusp::array1d_view<RandomAccessIterator> x,
-          const ScalarType alpha)
+          ScalarType alpha)
 {
     thrust::fill(x.begin(), x.end(), alpha);
 }
@@ -303,7 +300,7 @@ void fill(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
           Array& x,
           ScalarType alpha)
 {
-    cusp::blas::fill(x, alpha);
+    thrust::fill(exec, x.begin(), x.end(), alpha);
 }
 
 template <typename Array>

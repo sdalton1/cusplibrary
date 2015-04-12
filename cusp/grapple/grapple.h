@@ -119,7 +119,6 @@ static cusp_grapple_init initialize_cusp_grapple;
 
 #include "blas.h"
 #include "cg.h"
-
 #include "convert.h"
 #include "copy.h"
 #include "elementwise.h"
