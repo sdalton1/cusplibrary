@@ -35,14 +35,14 @@ template <typename DerivedPolicy,
           typename MatrixOrVector1,
           typename MatrixOrVector2>
 void multiply_inner(thrust::detail::execution_policy_base<DerivedPolicy> &exec,
-               LinearOperator&  A,
-               MatrixOrVector1& B,
-               MatrixOrVector2& C,
-               permutation_format,
-               array1d_format,
-               array1d_format)
+                    LinearOperator&  A,
+                    MatrixOrVector1& B,
+                    MatrixOrVector2& C,
+                    permutation_format,
+                    array1d_format,
+                    array1d_format)
 {
-    C.resize(B.size());
+    C.resize(A.num_rows);
 
     thrust::scatter(exec, B.begin(), B.end(), A.permutation.begin(), C.begin());
 }
@@ -52,12 +52,12 @@ template <typename DerivedPolicy,
           typename MatrixOrVector1,
           typename MatrixOrVector2>
 void multiply_inner(thrust::detail::execution_policy_base<DerivedPolicy> &exec,
-               LinearOperator&  A,
-               MatrixOrVector1& B,
-               MatrixOrVector2& C,
-               permutation_format,
-               coo_format,
-               coo_format)
+                    LinearOperator&  A,
+                    MatrixOrVector1& B,
+                    MatrixOrVector2& C,
+                    permutation_format,
+                    coo_format,
+                    coo_format)
 {
     C.resize(B.num_rows, B.num_cols, B.num_entries);
 
@@ -66,7 +66,7 @@ void multiply_inner(thrust::detail::execution_policy_base<DerivedPolicy> &exec,
     cusp::copy(exec, B.column_indices, C.column_indices);
     cusp::copy(exec, B.values, C.values);
 
-    C.sort_by_row();
+    cusp::detail::sort_by_row(exec, C.row_indices, C.column_indices, C.values, 0, C.num_rows, 0, C.num_cols);
 }
 
 template <typename DerivedPolicy,
@@ -74,12 +74,12 @@ template <typename DerivedPolicy,
           typename MatrixOrVector1,
           typename MatrixOrVector2>
 void multiply_inner(thrust::detail::execution_policy_base<DerivedPolicy> &exec,
-               LinearOperator&  A,
-               MatrixOrVector1& B,
-               MatrixOrVector2& C,
-               coo_format,
-               permutation_format,
-               coo_format)
+                    LinearOperator&  A,
+                    MatrixOrVector1& B,
+                    MatrixOrVector2& C,
+                    coo_format,
+                    permutation_format,
+                    coo_format)
 {
     C.resize(A.num_rows, A.num_cols, A.num_entries);
 
@@ -88,7 +88,7 @@ void multiply_inner(thrust::detail::execution_policy_base<DerivedPolicy> &exec,
     cusp::copy(exec, A.row_indices, C.row_indices);
     cusp::copy(exec, A.values, C.values);
 
-    C.sort_by_row_and_column();
+    cusp::detail::sort_by_row_and_column(exec, C.row_indices, C.column_indices, C.values, 0, C.num_rows, 0, C.num_cols);
 }
 
 template <typename DerivedPolicy,
@@ -96,12 +96,12 @@ template <typename DerivedPolicy,
           typename MatrixOrVector1,
           typename MatrixOrVector2>
 void multiply_inner(thrust::detail::execution_policy_base<DerivedPolicy> &exec,
-               LinearOperator&  A,
-               MatrixOrVector1& B,
-               MatrixOrVector2& C,
-               permutation_format,
-               sparse_format,
-               sparse_format)
+                    LinearOperator&  A,
+                    MatrixOrVector1& B,
+                    MatrixOrVector2& C,
+                    permutation_format,
+                    sparse_format,
+                    sparse_format)
 {
    typename cusp::detail::as_coo_type<MatrixOrVector1>::type B_(B);
    typename cusp::detail::as_coo_type<MatrixOrVector2>::type C_(C);
@@ -115,12 +115,12 @@ template <typename DerivedPolicy,
           typename MatrixOrVector1,
           typename MatrixOrVector2>
 void multiply_inner(thrust::detail::execution_policy_base<DerivedPolicy> &exec,
-               LinearOperator&  A,
-               MatrixOrVector1& B,
-               MatrixOrVector2& C,
-               sparse_format,
-               permutation_format,
-               sparse_format)
+                    LinearOperator&  A,
+                    MatrixOrVector1& B,
+                    MatrixOrVector2& C,
+                    sparse_format,
+                    permutation_format,
+                    sparse_format)
 {
    typename cusp::detail::as_coo_type<MatrixOrVector1>::type A_(A);
    typename cusp::detail::as_coo_type<MatrixOrVector2>::type C_(C);
