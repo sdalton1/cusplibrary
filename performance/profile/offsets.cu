@@ -1,12 +1,11 @@
+#include <cusp/grapple/grapple.h>
+
 #include <cusp/csr_matrix.h>
 
 #include <cusp/gallery/poisson.h>
 #include <cusp/io/matrix_market.h>
 
 #include <iostream>
-
-/* #include "cusp_grapple/cusp_grapple.h" */
-#include <cusp/grapple/grapple.h>
 
 int main(int argc, char ** argv)
 {
@@ -32,6 +31,7 @@ int main(int argc, char ** argv)
 
     cusp::array1d<IndexType,cusp::device_memory> A_row_indices(A.num_entries);
     cusp::offsets_to_indices(exec, A.row_offsets, A_row_indices);
+    cusp::compute_optimal_entries_per_row(exec, A.row_offsets);
 
     return 0;
 }

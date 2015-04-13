@@ -26,7 +26,7 @@ int main(int argc, char ** argv)
 
     cusp::array1d<IndexType,MemorySpace> x(A.num_cols, 1);
     cusp::array1d<IndexType,MemorySpace> y(A.num_rows, 0);
-    cusp::multiply(thrust::omp::par, A, x, y);
+    cusp::multiply(exec, A, x, y);
 
     return 0;
 }

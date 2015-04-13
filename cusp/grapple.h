@@ -18,7 +18,8 @@
 
 #include <grapple/grapple.h>
 
-#include <cusp/detail/grapple/init.h>
+#include <cusp/detail/grapple/cusp.h>
+
 #include <cusp/detail/grapple/blas.h>
 #include <cusp/detail/grapple/cg.h>
 #include <cusp/detail/grapple/convert.h>

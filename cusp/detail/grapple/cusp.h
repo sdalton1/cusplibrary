@@ -120,3 +120,17 @@ struct cusp_grapple_init
 static cusp_grapple_init initialize_cusp_grapple;
 
 } // end grapple namespace
+
+namespace cusp
+{
+  using namespace grapple;
+  namespace
+  {
+    using namespace grapple;
+  }
+  namespace krylov
+  {
+    using namespace grapple;
+  }
+}
+
