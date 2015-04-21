@@ -62,5 +62,5 @@ void sort_by_row_and_column(grapple_system &exec,
     exec.stop();
 }
 
-}
+} // end namespace cusp
 

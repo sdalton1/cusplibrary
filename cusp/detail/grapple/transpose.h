@@ -30,5 +30,5 @@ void transpose(grapple_system &exec,
     exec.stop();
 }
 
-}
+} // end namespace cusp
 

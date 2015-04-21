@@ -53,5 +53,5 @@ void generalized_spmv(grapple_system &exec,
     exec.stop();
 }
 
-}
+} // end namespace cusp
 

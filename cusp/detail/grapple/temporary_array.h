@@ -31,25 +31,25 @@ namespace detail
 using thrust::system::detail::generic::select_system;
 
 template<typename T, typename Space>
-  class temporary_array<T,Space,grapple_system>
+class temporary_array<T,Space,grapple_system>
     : public thrust::detail::temporary_array<T,Space>
 {
-  private:
+private:
 
     typedef thrust::detail::temporary_array<T,Space> super_t;
     typedef typename super_t::size_type size_type;
 
     Space space;
 
-  public:
+public:
 
     temporary_array(thrust::execution_policy<grapple_system> &system) : super_t(system) {};
 
     temporary_array(thrust::execution_policy<grapple_system> &system, size_type n)
-      : super_t(select_system(space), n)
+        : super_t(select_system(space), n)
     {
-      // register size of the requested allocation
-      thrust::detail::derived_cast(system).allocate(n, false);
+        // register size of the requested allocation
+        thrust::detail::derived_cast(system).allocate(n, false);
     }
 
     // provide a kill-switch to explicitly avoid initialization
@@ -78,7 +78,6 @@ template<typename T, typename Space>
                     InputIterator last) : super_t(system, input_system, first, last) {}
 
 }; // end temporary_array
-
 
 } // end detail
 } // end cusp

@@ -65,5 +65,5 @@ void cg(grapple_system &exec,
     exec.stop();
 }
 
-}
-}
+} // end namespace krylov
+} // end namepsace cusp
