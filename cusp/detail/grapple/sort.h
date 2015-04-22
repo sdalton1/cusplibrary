@@ -18,7 +18,7 @@
 
 #include <cusp/sort.h>
 
-namespace cusp
+namespace grapple
 {
 
 template <typename ArrayType>

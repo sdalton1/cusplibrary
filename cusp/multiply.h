@@ -111,13 +111,14 @@ template <typename DerivedPolicy,
          typename UnaryFunction,
          typename BinaryFunction1,
          typename BinaryFunction2>
-void multiply(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
-              const LinearOperator&  A,
-              const MatrixOrVector1& B,
-              MatrixOrVector2& C,
-              UnaryFunction  initialize,
-              BinaryFunction1 combine,
-              BinaryFunction2 reduce);
+typename thrust::detail::enable_if_convertible< UnaryFunction, thrust::unary_function<typename UnaryFunction::argument_type, typename UnaryFunction::result_type> >::type
+multiply(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
+         const LinearOperator&  A,
+         const MatrixOrVector1& B,
+         MatrixOrVector2& C,
+         UnaryFunction  initialize,
+         BinaryFunction1 combine,
+         BinaryFunction2 reduce);
 /*! \endcond */
 
 /**

@@ -18,7 +18,7 @@
 
 #include <cusp/multiply.h>
 
-namespace cusp
+namespace grapple
 {
 
 template <typename LinearOperator,

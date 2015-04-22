@@ -18,9 +18,7 @@
 
 #include <cusp/blas/blas.h>
 
-namespace cusp
-{
-namespace blas
+namespace grapple
 {
 
 template <typename Array1,
@@ -217,6 +215,5 @@ void gemm(grapple_system &exec,
     exec.stop();
 }
 
-} // end blas namespace
-} // end cusp nemespace
+} // end grapple namespace
 

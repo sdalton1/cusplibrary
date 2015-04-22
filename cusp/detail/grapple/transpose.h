@@ -18,7 +18,7 @@
 
 #include <cusp/transpose.h>
 
-namespace cusp
+namespace grapple
 {
 
 template <typename MatrixType1, typename MatrixType2>

@@ -212,7 +212,7 @@ public:
     template <typename VectorType1, typename VectorType2>
     void operator()(const VectorType1& x, VectorType2& y) const
     {
-        cusp::blas::copy(x, y);
+        thrust::copy(x.begin(), x.end(), y.begin());
     }
 }; // identity_operator
 

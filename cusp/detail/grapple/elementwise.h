@@ -18,7 +18,7 @@
 
 #include <cusp/elementwise.h>
 
-namespace cusp
+namespace grapple
 {
 
 template <typename MatrixType1, typename MatrixType2, typename MatrixType3, typename BinaryFunction>

@@ -18,7 +18,7 @@
 
 #include <cusp/format_utils.h>
 
-namespace cusp
+namespace grapple
 {
 
 template <typename OffsetArray, typename IndexArray>

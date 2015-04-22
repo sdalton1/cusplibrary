@@ -18,7 +18,7 @@
 
 #include <cusp/copy.h>
 
-namespace cusp
+namespace grapple
 {
 
 template <typename SourceType, typename DestinationType>

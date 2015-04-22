@@ -18,7 +18,7 @@
 
 #include <cusp/convert.h>
 
-namespace cusp
+namespace grapple
 {
 
 template <typename SourceType, typename DestinationType>

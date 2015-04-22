@@ -28,6 +28,7 @@ namespace cusp
 namespace detail
 {
 
+using namespace grapple;
 using thrust::system::detail::generic::select_system;
 
 template<typename T, typename Space>
