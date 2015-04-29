@@ -1,3 +1,4 @@
+#include "../timer.h"
 #include <cusp/csr_matrix.h>
 #include <cusp/io/matrix_market.h>
 #include <cusp/gallery/poisson.h>

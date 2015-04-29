@@ -114,6 +114,7 @@ struct CTASpmvLoad {
         T vecData[VT];
 #pragma unroll
         for(int i = 0; i < VT; ++i)
+            /* vecData[i] = vec_global[columns[i]]; */
             vecData[i] = ldg(vec_global + columns[i]);
 
         // Clear out the out-of-range inputs.
@@ -182,6 +183,7 @@ struct CTASpmvLoad {
         T vecData[VT];
 #pragma unroll
         for(int i = 0; i < VT; ++i)
+            /* vecData[i] = vec_global[columns[i]]; */
             vecData[i] = ldg(vec_global + columns[i]);
 
         // Multiply matrix and vector values together.

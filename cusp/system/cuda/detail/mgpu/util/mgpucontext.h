@@ -1,7 +1,7 @@
 #pragma once
 
-#include "util/util.h"
-#include "util/format.h"
+#include "../util/util.h"
+#include "../util/format.h"
 #include "mgpualloc.h"
 #include <cuda.h>
 
@@ -11,13 +11,13 @@ MGPU_NS_PREFIX
 namespace mgpu {
 
 #ifdef _DEBUG
-#define MGPU_SYNC_CHECK(s) {												\
-	cudaError_t error = cudaDeviceSynchronize();							\
-	if(cudaSuccess != error) {												\
-		printf("CUDA ERROR %d %s\n%s:%d.\n%s\n",							\
+#define MGPU_SYNC_CHECK(s) {												              \
+	cudaError_t error = cudaDeviceSynchronize();							      \
+	if(cudaSuccess != error) {												              \
+		printf("CUDA ERROR %d %s\n%s:%d.\n%s\n",							        \
 			error, cudaGetErrorString(error), __FILE__, __LINE__, s);		\
-		exit(0);															\
-	}																		\
+		exit(0);															                        \
+	}																		                            \
 }
 #else
 #define MGPU_SYNC_CHECK(s)
@@ -564,6 +564,7 @@ void PrintArrayOp(const CudaDeviceMem<T>& mem, Op op, int numCols) {
 
 } // namespace mgpu
 
-
 MGPU_NS_POSTFIX  // Optional outer namespace(s)
+
+#include "mgpucontext.inl"
 

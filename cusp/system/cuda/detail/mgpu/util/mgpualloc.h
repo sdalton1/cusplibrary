@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util/util.h"
+#include "util.h"
 #include <cuda.h>
 
 /// Optional outer namespace(s)
