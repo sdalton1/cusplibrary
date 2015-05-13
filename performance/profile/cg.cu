@@ -11,6 +11,8 @@
 
 int main(int argc, char ** argv)
 {
+    using namespace grapple;
+
     typedef int                  IndexType;
     typedef float                ValueType;
     typedef cusp::device_memory  MemorySpace;
@@ -24,7 +26,7 @@ int main(int argc, char ** argv)
     cusp::array1d<ValueType, MemorySpace> b(A.num_rows, 1);
     cusp::monitor<ValueType> monitor(b, 2, 1e-10);
 
-    grapple::grapple_system exec;
+    grapple_system exec;
     cusp::krylov::cg(exec, A, x, b, monitor);
 
     return 0;

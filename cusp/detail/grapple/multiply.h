@@ -22,12 +22,12 @@ namespace grapple
 {
 
 template <typename LinearOperator,
-         typename MatrixOrVector1,
-         typename MatrixOrVector2>
+          typename MatrixOrVector1,
+          typename MatrixOrVector2>
 void multiply(grapple_system &exec,
               const LinearOperator&  A,
               const MatrixOrVector1& B,
-              MatrixOrVector2& C)
+                    MatrixOrVector2& C)
 {
     exec.start(CUSP_MULTIPLY);
     cusp::multiply(exec.policy(), A, B, C);
@@ -35,11 +35,32 @@ void multiply(grapple_system &exec,
 }
 
 template <typename LinearOperator,
-         typename Vector1,
-         typename Vector2,
-         typename Vector3,
-         typename BinaryFunction1,
-         typename BinaryFunction2>
+          typename MatrixOrVector1,
+          typename MatrixOrVector2,
+          typename Format1,
+          typename Format2,
+          typename Format3>
+void multiply(grapple_system &exec,
+              const LinearOperator&  A,
+              const MatrixOrVector1& B,
+                    MatrixOrVector2& C,
+                    Format1 format1,
+                    Format2 format2,
+                    Format3 format3)
+{
+    using cusp::system::detail::generic::multiply;
+
+    exec.start(CUSP_MULTIPLY);
+    multiply(exec.policy(), A, B, C, format1, format2, format3);
+    exec.stop();
+}
+
+template <typename LinearOperator,
+          typename Vector1,
+          typename Vector2,
+          typename Vector3,
+          typename BinaryFunction1,
+          typename BinaryFunction2>
 void generalized_spmv(grapple_system &exec,
                       const LinearOperator&  A,
                       const Vector1& x,

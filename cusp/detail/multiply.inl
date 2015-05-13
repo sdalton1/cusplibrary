@@ -33,7 +33,7 @@ template <typename DerivedPolicy,
 void multiply(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
               const LinearOperator&  A,
               const MatrixOrVector1& B,
-              MatrixOrVector2& C)
+                    MatrixOrVector2& C)
 {
     using cusp::system::detail::generic::multiply;
 
@@ -55,7 +55,7 @@ template <typename LinearOperator,
           typename MatrixOrVector2>
 void multiply(const LinearOperator&  A,
               const MatrixOrVector1& B,
-              MatrixOrVector2& C)
+                    MatrixOrVector2& C)
 {
     using thrust::system::detail::generic::select_system;
 

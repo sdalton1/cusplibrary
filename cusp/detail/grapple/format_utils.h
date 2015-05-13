@@ -26,8 +26,10 @@ void offsets_to_indices(grapple_system &exec,
                         const OffsetArray& offsets,
                         IndexArray& indices)
 {
+    using cusp::system::detail::generic::offsets_to_indices;
+
     exec.start(CUSP_OFFSETS_TO_INDICES);
-    cusp::offsets_to_indices(exec.policy(), offsets, indices);
+    offsets_to_indices(exec.policy(), offsets, indices);
     exec.stop();
 }
 
@@ -36,6 +38,8 @@ void indices_to_offsets(grapple_system &exec,
                         const IndexArray& indices,
                         OffsetArray& offsets)
 {
+    using cusp::system::detail::generic::indices_to_offsets;
+
     exec.start(CUSP_INDICES_TO_OFFSETS);
     cusp::indices_to_offsets(exec.policy(), indices, offsets);
     exec.stop();
@@ -58,8 +62,10 @@ size_t compute_optimal_entries_per_row(grapple_system &exec,
                                        float relative_speed = 3.0f,
                                        size_t breakeven_threshold = 4096)
 {
+    using cusp::system::detail::generic::compute_max_entries_per_row;
+
     exec.start(CUSP_COMPUTE_OPTIMAL_ENTRIES_PER_ROW);
-    size_t ret = cusp::compute_optimal_entries_per_row(exec.policy(), row_offsets, relative_speed, breakeven_threshold);
+    size_t ret = compute_optimal_entries_per_row(exec.policy(), row_offsets, relative_speed, breakeven_threshold);
     exec.stop();
 
     return ret;
@@ -70,8 +76,12 @@ void extract_diagonal(grapple_system &exec,
                       const MatrixType& A,
                       ArrayType& output)
 {
+    using cusp::system::detail::generic::extract_diagonal;
+
+    output.resize(thrust::min(A.num_rows, A.num_cols));
+
     exec.start(CUSP_EXTRACT_DIAGONAL);
-    cusp::extract_diagonal(exec.policy(), A, output);
+    extract_diagonal(exec.policy(), A, output, typename MatrixType::format());
     exec.stop();
 }
 
@@ -82,8 +92,10 @@ size_t count_diagonals(grapple_system &exec,
                        const ArrayType1& row_indices,
                        const ArrayType2& column_indices)
 {
+    using cusp::system::detail::generic::count_diagonals;
+
     exec.start(CUSP_COUNT_DIAGONALS);
-    size_t ret = cusp::count_diagonals(exec.policy(), num_rows, num_cols, row_indices, column_indices);
+    size_t ret = count_diagonals(exec.policy(), num_rows, num_cols, row_indices, column_indices);
     exec.stop();
 
     return ret;

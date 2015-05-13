@@ -37,7 +37,7 @@ template <typename DerivedPolicy,
           class Vector,
           class Monitor,
           class Preconditioner>
-void cg(thrust::execution_policy<DerivedPolicy> &exec_,
+void cg(thrust::execution_policy<DerivedPolicy> &exec,
         LinearOperator& A,
         Vector& x,
         Vector& b,
@@ -50,8 +50,6 @@ void cg(thrust::execution_policy<DerivedPolicy> &exec_,
     typedef cusp::detail::temporary_array<ValueType, MemorySpace, DerivedPolicy> TempArray;
     typedef typename TempArray::iterator     TempIterator;
     typedef cusp::array1d_view<TempIterator> TempArrayView;
-
-    DerivedPolicy& exec = thrust::detail::derived_cast(exec_);
 
     assert(A.num_rows == A.num_cols);        // sanity check
 
