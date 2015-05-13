@@ -29,11 +29,24 @@ tester
 # Ignore LCOV files
 *.gcda
 *.gcno
+*.gcov
 *.info
 
 # Ignore html
 *.html
 *.css
+
+# Ignore Windows VS files
+*.filters
+*.suo
+*.sdf
+*.deps
+*.cache
+*.lastbuildstate
+*.tlog
+*.cd
+*.ilk
+*.opensdf
 
 # Ignore build files
 #<AutoIgnore>
@@ -82,14 +95,3 @@ performance/overhead/memory
 performance/spmv/spmv
 #<AutoIgnore/>
 
-VS/cusplibrary.vcxproj.user
-*.filters
-*.suo
-*.sdf
-*.deps
-*.cache
-*.lastbuildstate
-*.tlog
-*.cd
-*.ilk
-*.opensdf

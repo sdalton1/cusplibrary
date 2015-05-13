@@ -1,5 +1,5 @@
 /*
- *  Copyright 2008-2012 NVIDIA Corporation
+ *  Copyright 2008-2013 NVIDIA Corporation
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -17,34 +17,5 @@
 #pragma once
 
 #include <cusp/detail/config.h>
-#include <cusp/blas/blas_policy.h>
 
-namespace cusp
-{
-namespace blas
-{
-namespace cublas
-{
-// put the canonical tag in the same ns as the backend's entry points
-namespace detail
-{
-
-template<typename MemorySpace> struct blas_policy{};
-
-} // end detail
-
-// alias execution_policy and tag here
-using cusp::blas::cublas::detail::blas_policy;
-
-} // end cublas
-} // end blas
-
-// alias items at top-level
-namespace cublas
-{
-
-using cusp::blas::cublas::blas_policy;
-
-} // end cublas
-} // end cusp
-
+// this system has no special version of this algorithm

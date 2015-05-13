@@ -158,9 +158,9 @@ size_t spmm_csr_pass2(const size_t num_rows, const size_t num_cols,
 }
 
 template <typename DerivedPolicy,
-         typename Matrix1,
-         typename Matrix2,
-         typename Matrix3>
+          typename Matrix1,
+          typename Matrix2,
+          typename Matrix3>
 void multiply(omp::execution_policy<DerivedPolicy>& exec,
               const Matrix1& A,
               const Matrix2& B,

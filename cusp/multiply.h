@@ -35,13 +35,13 @@ namespace cusp
 
 /*! \cond */
 template <typename DerivedPolicy,
-         typename LinearOperator,
-         typename MatrixOrVector1,
-         typename MatrixOrVector2>
+          typename LinearOperator,
+          typename MatrixOrVector1,
+          typename MatrixOrVector2>
 void multiply(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
               const LinearOperator&  A,
               const MatrixOrVector1& B,
-              MatrixOrVector2& C);
+                    MatrixOrVector2& C);
 /*! \endcond */
 
 /**
@@ -97,28 +97,28 @@ void multiply(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
  *  \endcode
  */
 template <typename LinearOperator,
-         typename MatrixOrVector1,
-         typename MatrixOrVector2>
+          typename MatrixOrVector1,
+          typename MatrixOrVector2>
 void multiply(const LinearOperator&  A,
               const MatrixOrVector1& B,
-              MatrixOrVector2& C);
+                    MatrixOrVector2& C);
 
 /*! \cond */
 template <typename DerivedPolicy,
-         typename LinearOperator,
-         typename MatrixOrVector1,
-         typename MatrixOrVector2,
-         typename UnaryFunction,
-         typename BinaryFunction1,
-         typename BinaryFunction2>
-typename thrust::detail::enable_if_convertible< UnaryFunction, thrust::unary_function<typename UnaryFunction::argument_type, typename UnaryFunction::result_type> >::type
+          typename LinearOperator,
+          typename MatrixOrVector1,
+          typename MatrixOrVector2,
+          typename UnaryFunction,
+          typename BinaryFunction1,
+          typename BinaryFunction2>
+typename thrust::detail::disable_if_convertible<UnaryFunction,cusp::known_format,void>::type
 multiply(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
          const LinearOperator&  A,
          const MatrixOrVector1& B,
-         MatrixOrVector2& C,
-         UnaryFunction  initialize,
-         BinaryFunction1 combine,
-         BinaryFunction2 reduce);
+               MatrixOrVector2& C,
+               UnaryFunction  initialize,
+               BinaryFunction1 combine,
+               BinaryFunction2 reduce);
 /*! \endcond */
 
 /**
@@ -182,33 +182,33 @@ multiply(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
  *  \endcode
  */
 template <typename LinearOperator,
-         typename MatrixOrVector1,
-         typename MatrixOrVector2,
-         typename UnaryFunction,
-         typename BinaryFunction1,
-         typename BinaryFunction2>
+          typename MatrixOrVector1,
+          typename MatrixOrVector2,
+          typename UnaryFunction,
+          typename BinaryFunction1,
+          typename BinaryFunction2>
 void multiply(const LinearOperator&  A,
               const MatrixOrVector1& B,
-              MatrixOrVector2& C,
-              UnaryFunction  initialize,
-              BinaryFunction1 combine,
-              BinaryFunction2 reduce);
+                    MatrixOrVector2& C,
+                    UnaryFunction  initialize,
+                    BinaryFunction1 combine,
+                    BinaryFunction2 reduce);
 
 /*! \cond */
 template <typename DerivedPolicy,
-         typename LinearOperator,
-         typename Vector1,
-         typename Vector2,
-         typename Vector3,
-         typename BinaryFunction1,
-         typename BinaryFunction2>
+          typename LinearOperator,
+          typename Vector1,
+          typename Vector2,
+          typename Vector3,
+          typename BinaryFunction1,
+          typename BinaryFunction2>
 void generalized_spmv(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
                       const LinearOperator&  A,
                       const Vector1& x,
                       const Vector2& y,
                             Vector3& z,
-                      BinaryFunction1 combine,
-                      BinaryFunction2 reduce);
+                            BinaryFunction1 combine,
+                            BinaryFunction2 reduce);
 /*! \endcond */
 
 /**
@@ -271,17 +271,17 @@ void generalized_spmv(const thrust::detail::execution_policy_base<DerivedPolicy>
  *  \endcode
  */
 template <typename LinearOperator,
-         typename Vector1,
-         typename Vector2,
-         typename Vector3,
-         typename BinaryFunction1,
-         typename BinaryFunction2>
+          typename Vector1,
+          typename Vector2,
+          typename Vector3,
+          typename BinaryFunction1,
+          typename BinaryFunction2>
 void generalized_spmv(const LinearOperator&  A,
                       const Vector1& x,
                       const Vector2& y,
                             Vector3& z,
-                      BinaryFunction1 combine,
-                      BinaryFunction2 reduce);
+                            BinaryFunction1 combine,
+                            BinaryFunction2 reduce);
 /*! \}
  */
 

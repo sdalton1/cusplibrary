@@ -33,9 +33,9 @@ namespace sequential
 {
 
 template <typename DerivedPolicy,
-         typename Matrix1,
-         typename Matrix2,
-         typename Matrix3>
+          typename Matrix1,
+          typename Matrix2,
+          typename Matrix3>
 void multiply(sequential::execution_policy<DerivedPolicy>& exec,
               const Matrix1& A,
               const Matrix2& B,

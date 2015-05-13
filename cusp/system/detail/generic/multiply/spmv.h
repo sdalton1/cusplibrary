@@ -46,8 +46,8 @@ template <typename DerivedPolicy,
           typename LinearOperator, typename MatrixOrVector1, typename MatrixOrVector2,
           typename UnaryFunction,  typename BinaryFunction1, typename BinaryFunction2>
 void multiply(thrust::execution_policy<DerivedPolicy> &exec,
-              LinearOperator&  A,
-              MatrixOrVector1& B,
+              const LinearOperator&  A,
+              const MatrixOrVector1& B,
               MatrixOrVector2& C,
               UnaryFunction    initialize,
               BinaryFunction1  combine,
@@ -122,8 +122,8 @@ template <typename DerivedPolicy,
           typename LinearOperator, typename MatrixOrVector1, typename MatrixOrVector2,
           typename UnaryFunction,  typename BinaryFunction1, typename BinaryFunction2>
 void multiply(thrust::execution_policy<DerivedPolicy> &exec,
-              LinearOperator&  A,
-              MatrixOrVector1& B,
+              const LinearOperator&  A,
+              const MatrixOrVector1& B,
               MatrixOrVector2& C,
               UnaryFunction    initialize,
               BinaryFunction1  combine,
@@ -234,9 +234,9 @@ template <typename DerivedPolicy,
           typename LinearOperator, typename MatrixOrVector1, typename MatrixOrVector2,
           typename UnaryFunction,  typename BinaryFunction1, typename BinaryFunction2>
 void multiply(thrust::execution_policy<DerivedPolicy> &exec,
-              LinearOperator&  A,
-              MatrixOrVector1& B,
-              MatrixOrVector2& C,
+              const LinearOperator&  A,
+              const MatrixOrVector1& B,
+                    MatrixOrVector2& C,
               UnaryFunction    initialize,
               BinaryFunction1  combine,
               BinaryFunction2  reduce,
@@ -248,9 +248,9 @@ void multiply(thrust::execution_policy<DerivedPolicy> &exec,
     typedef typename LinearOperator::memory_space MemorySpace;
     typedef typename cusp::detail::temporary_array<IndexType, MemorySpace, DerivedPolicy>::iterator TempIterator;
 
-    typedef typename cusp::array1d_view<TempIterator>::view           RowView;
-    typedef typename LinearOperator::column_indices_array_type::view  ColView;
-    typedef typename LinearOperator::values_array_type::view          ValView;
+    typedef typename cusp::array1d_view<TempIterator>::view                 RowView;
+    typedef typename LinearOperator::column_indices_array_type::const_view  ColView;
+    typedef typename LinearOperator::values_array_type::const_view          ValView;
 
     cusp::detail::temporary_array<IndexType, MemorySpace, DerivedPolicy> temp(exec, A.num_entries);
     cusp::array1d_view<TempIterator> row_indices(temp.begin(), temp.end());
@@ -262,24 +262,6 @@ void multiply(thrust::execution_policy<DerivedPolicy> &exec,
                                                               cusp::make_array1d_view(A.values));
 
     cusp::multiply(thrust::detail::derived_cast(exec), A_coo_view, B, C, initialize, combine, reduce);
-}
-
-template <typename DerivedPolicy,
-          typename LinearOperator, typename MatrixOrVector1, typename MatrixOrVector2,
-          typename UnaryFunction,  typename BinaryFunction1, typename BinaryFunction2>
-void multiply(thrust::execution_policy<DerivedPolicy> &exec,
-              LinearOperator&  A,
-              MatrixOrVector1& B,
-              MatrixOrVector2& C,
-              UnaryFunction   initialize,
-              BinaryFunction1 combine,
-              BinaryFunction2 reduce,
-              permutation_format,
-              array1d_format,
-              array1d_format)
-{
-    // TODO : initialize, combine, and reduce are ignored
-    thrust::gather(exec, A.permutation.begin(), A.permutation.end(), B.begin(), C.begin());
 }
 
 template <typename DerivedPolicy,

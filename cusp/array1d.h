@@ -21,7 +21,6 @@
 
 #pragma once
 
-#include <typeinfo>
 #include <cusp/detail/config.h>
 
 #include <cusp/memory.h>
@@ -386,7 +385,7 @@ public :
     typedef typename cusp::array1d_view<RandomAccessIterator>                   view;
 
     typedef RandomAccessIterator                                                const_iterator;
-    typedef typename cusp::array1d_view<RandomAccessIterator>                   const_view;
+    typedef typename cusp::array1d_view<const_iterator>                         const_view;
     /*! \endcond */
 
     /*! This constructor creates an empty \p array1d_view vector.
@@ -694,7 +693,9 @@ public:
 template <typename Iterator>
 array1d_view<Iterator> make_array1d_view(Iterator first, Iterator last)
 {
-    return array1d_view<Iterator>(first, last);
+    array1d_view<Iterator> ret(first, last);
+
+	return ret;
 }
 
 /**
