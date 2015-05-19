@@ -6,10 +6,12 @@
 
 #include <iostream>
 
-#include <cusp/grapple/grapple.h>
+#include <cusp/grapple.h>
 
 int main(int argc, char ** argv)
 {
+    using namespace grapple;
+
     typedef int                  IndexType;
     typedef float                ValueType;
     typedef cusp::device_memory  MemorySpace;

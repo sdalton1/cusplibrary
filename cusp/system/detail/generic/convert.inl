@@ -49,7 +49,7 @@ void convert(thrust::execution_policy<DerivedPolicy>& exec,
              Format&,
              Format&)
 {
-    cusp::copy(src, dst);
+    cusp::copy(exec, src, dst);
 }
 
 template <typename DerivedPolicy,

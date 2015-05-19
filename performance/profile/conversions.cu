@@ -16,7 +16,7 @@
 #include <cmath>
 #include <stdio.h>
 
-#include <cusp/grapple/grapple.h>
+#include <cusp/grapple.h>
 
 template <typename SourceType, typename DestinationType, typename InputType>
 float time_conversion(const InputType& A)
@@ -24,7 +24,7 @@ float time_conversion(const InputType& A)
     unsigned int N = 1;
 
     SourceType S;
-    grapple_system exec;
+    grapple::grapple_system exec;
 
     try
     {
@@ -99,7 +99,9 @@ void for_each_source(const InputType& A)
 
 int main(int argc, char ** argv)
 {
+    #ifdef __CUDACC__
     cudaSetDevice(0);
+    #endif
 
     typedef int    IndexType;
     typedef float  ValueType;

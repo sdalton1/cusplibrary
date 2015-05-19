@@ -25,8 +25,17 @@ template <typename SourceType, typename DestinationType>
 void convert(grapple_system &exec,
              const SourceType& src, DestinationType& dst)
 {
+    using cusp::system::detail::generic::convert;
+
+    typedef typename SourceType::format      Format1;
+    typedef typename DestinationType::format Format2;
+
+    Format1 format1;
+    Format2 format2;
+
     exec.start(CUSP_CONVERT);
-    cusp::convert(exec.policy(), src, dst);
+    // cusp::convert(exec.policy(), src, dst);
+    convert(exec.policy(), src, dst, format1, format2);
     exec.stop();
 }
 

@@ -41,7 +41,7 @@ void indices_to_offsets(grapple_system &exec,
     using cusp::system::detail::generic::indices_to_offsets;
 
     exec.start(CUSP_INDICES_TO_OFFSETS);
-    cusp::indices_to_offsets(exec.policy(), indices, offsets);
+    indices_to_offsets(exec.policy(), indices, offsets);
     exec.stop();
 }
 
@@ -49,8 +49,10 @@ template <typename ArrayType>
 size_t compute_max_entries_per_row(grapple_system &exec,
                                    const ArrayType& row_offsets)
 {
+    using cusp::system::detail::generic::compute_max_entries_per_row;
+
     exec.start(CUSP_COMPUTE_MAX_ENTRIES_PER_ROW);
-    size_t ret = cusp::compute_max_entries_per_row(exec.policy(), row_offsets);
+    size_t ret = compute_max_entries_per_row(exec.policy(), row_offsets);
     exec.stop();
 
     return ret;
@@ -62,7 +64,7 @@ size_t compute_optimal_entries_per_row(grapple_system &exec,
                                        float relative_speed = 3.0f,
                                        size_t breakeven_threshold = 4096)
 {
-    using cusp::system::detail::generic::compute_max_entries_per_row;
+    using cusp::system::detail::generic::compute_optimal_entries_per_row;
 
     exec.start(CUSP_COMPUTE_OPTIMAL_ENTRIES_PER_ROW);
     size_t ret = compute_optimal_entries_per_row(exec.policy(), row_offsets, relative_speed, breakeven_threshold);

@@ -1,4 +1,4 @@
-#include <cusp/grapple/grapple.h>
+#include <cusp/grapple.h>
 
 #include <cusp/csr_matrix.h>
 
@@ -9,6 +9,8 @@
 
 int main(int argc, char ** argv)
 {
+    using namespace grapple;
+
     typedef int    IndexType;
     typedef float  ValueType;
 

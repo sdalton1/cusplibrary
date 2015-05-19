@@ -14,8 +14,11 @@
  *  limitations under the License.
  */
 
-#include <cusp/detail/format.h>
 #include <cusp/array1d.h>
+
+#include <cusp/detail/format.h>
+#include <cusp/detail/temporary_array.h>
+
 #include <cusp/system/detail/adl/sort.h>
 #include <cusp/system/detail/generic/sort.h>
 
@@ -57,15 +60,15 @@ void sort_by_row(thrust::execution_policy<DerivedPolicy> &exec,
     if(max_row == 0)
         maxr = *thrust::max_element(row_indices.begin(), row_indices.end());
 
-    thrust::detail::temporary_array<IndexType, DerivedPolicy> permutation(exec, N);
+    cusp::detail::temporary_array<IndexType, MemorySpace, DerivedPolicy> permutation(exec, N);
     thrust::sequence(exec, permutation.begin(), permutation.end());
 
     // compute permutation that sorts the row_indices
     cusp::counting_sort_by_key(exec, row_indices, permutation, minr, maxr);
 
     // copy column_indices and values to temporary buffers
-    thrust::detail::temporary_array<IndexType, DerivedPolicy> temp1(exec, column_indices.begin(), column_indices.end());
-    thrust::detail::temporary_array<ValueType, DerivedPolicy> temp2(exec, values.begin(), values.end());
+    cusp::detail::temporary_array<IndexType, MemorySpace, DerivedPolicy> temp1(exec, column_indices.begin(), column_indices.end());
+    cusp::detail::temporary_array<ValueType, MemorySpace, DerivedPolicy> temp2(exec, values.begin(), values.end());
 
     // use permutation to reorder the values
     thrust::gather(exec,
@@ -89,7 +92,7 @@ void sort_by_row_and_column(thrust::execution_policy<DerivedPolicy> &exec,
 
     size_t N = row_indices.size();
 
-    thrust::detail::temporary_array<IndexType1, DerivedPolicy> permutation(exec, N);
+    cusp::detail::temporary_array<IndexType1, MemorySpace, DerivedPolicy> permutation(exec, N);
     thrust::sequence(exec, permutation.begin(), permutation.end());
 
     IndexType1 minr = min_row;
@@ -104,7 +107,7 @@ void sort_by_row_and_column(thrust::execution_policy<DerivedPolicy> &exec,
 
     // compute permutation and sort by (I,J)
     {
-        thrust::detail::temporary_array<IndexType1, DerivedPolicy> temp(exec, column_indices.begin(), column_indices.end());
+        cusp::detail::temporary_array<IndexType1, MemorySpace, DerivedPolicy> temp(exec, column_indices.begin(), column_indices.end());
         cusp::counting_sort_by_key(exec, temp, permutation, minc, maxc);
 
         thrust::copy(exec, row_indices.begin(), row_indices.end(), temp.begin());
@@ -117,7 +120,7 @@ void sort_by_row_and_column(thrust::execution_policy<DerivedPolicy> &exec,
 
     // use permutation to reorder the values
     {
-        thrust::detail::temporary_array<ValueType, DerivedPolicy> temp(exec, values.begin(), values.end());
+        cusp::detail::temporary_array<ValueType, MemorySpace, DerivedPolicy> temp(exec, values.begin(), values.end());
         thrust::gather(exec, permutation.begin(), permutation.end(), temp.begin(), values.begin());
     }
 }

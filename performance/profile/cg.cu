@@ -24,7 +24,7 @@ int main(int argc, char ** argv)
 
     cusp::array1d<ValueType, MemorySpace> x(A.num_rows, 0);
     cusp::array1d<ValueType, MemorySpace> b(A.num_rows, 1);
-    cusp::monitor<ValueType> monitor(b, 2, 1e-10);
+    cusp::monitor<ValueType> monitor(b, 1, 1e-10);
 
     grapple_system exec;
     cusp::krylov::cg(exec, A, x, b, monitor);

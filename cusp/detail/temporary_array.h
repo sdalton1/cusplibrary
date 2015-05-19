@@ -39,6 +39,7 @@ template<typename T, typename Space, typename System>
   public:
 
     typedef typename super_t::size_type size_type;
+    typedef Space memory_space;
 
     __host__ __device__
     temporary_array(thrust::execution_policy<System> &system) : super_t(system) {};
