@@ -111,6 +111,25 @@ void axpy(const ArrayType1& x,
 }
 
 template <typename ArrayType1,
+          typename Iterator,
+          typename ScalarType>
+void axpy(const ArrayType1& x,
+          const cusp::array1d_view<Iterator>& y,
+          const ScalarType alpha)
+{
+    using thrust::system::detail::generic::select_system;
+
+    typedef cusp::array1d_view<Iterator> ArrayType2;
+    typedef typename ArrayType1::memory_space System1;
+    typedef typename ArrayType2::memory_space System2;
+
+    System1 system1;
+    System2 system2;
+
+    cusp::blas::axpy(select_system(system1,system2), x, y, alpha);
+}
+
+template <typename ArrayType1,
           typename ArrayType2,
           typename ArrayType3,
           typename ScalarType1,
@@ -481,6 +500,20 @@ void scal(ArrayType& x,
     System system;
 
     cusp::blas::scal(select_system(system), x, alpha);
+}
+
+template <typename Iterator,
+          typename ScalarType>
+void scal(const cusp::array1d_view<Iterator>& x,
+          const ScalarType alpha)
+{
+    // using thrust::system::detail::generic::select_system;
+    //
+    // typedef typename Iterator::memory_space System;
+    //
+    // System system;
+    //
+    // cusp::blas::scal(select_system(system), x, alpha);
 }
 
 template <typename DerivedPolicy,
