@@ -70,7 +70,10 @@ float check_block_spmv(HostMatrix& host_matrix, TestMatrix& test_matrix, TestKer
 
     // compare results
     cusp::array2d<ValueType,cusp::host_memory> test_y_copy(test_y);
-    // double error = l2_error(M, thrust::raw_pointer_cast(&test_y_copy[0]), thrust::raw_pointer_cast(&host_y[0]));
+
+    ValueType error = 0;
+    for(size_t i = 0; i < num_cols; i++)
+        error = std::max(error, l2_error(test_y_copy.column(i), host_y.column(i)));
 
     return error;
 }

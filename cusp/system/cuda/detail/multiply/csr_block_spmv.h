@@ -51,6 +51,7 @@ __global__ void BlockSpmvKernel(const unsigned int A_num_rows,
 
     __shared__ volatile IndexType ptrs[VECTORS_PER_BLOCK][2];
     __shared__ volatile IndexType sdata[VECTORS_PER_BLOCK * THREADS_PER_VECTOR + THREADS_PER_VECTOR / 2];  // padded to avoid reduction conditionals
+    __shared__ volatile ValueType vdata[VECTORS_PER_BLOCK * THREADS_PER_VECTOR + THREADS_PER_VECTOR / 2];  // padded to avoid reduction conditionals
 
     const int THREADS_PER_BLOCK = VECTORS_PER_BLOCK * THREADS_PER_VECTOR;
 
@@ -71,7 +72,8 @@ __global__ void BlockSpmvKernel(const unsigned int A_num_rows,
         const IndexType row_end   = ptrs[vector_lane][1];                   //same as: row_end   = Ap[row+1];
 
         // initialize local sum
-        ValueType sum = X_values[row*THREADS_PER_VECTOR + thread_lane] * (row_end - row_start);
+        // ValueType sum = X_values[row*THREADS_PER_VECTOR + thread_lane] * (row_end - row_start);
+        ValueType sum = initialize(Y_values[row * THREADS_PER_VECTOR + thread_lane]);
 
         // accumulate local sums
         // for(IndexType jj = row_start; jj < row_end; jj += THREADS_PER_VECTOR)
@@ -105,12 +107,13 @@ __global__ void BlockSpmvKernel(const unsigned int A_num_rows,
             int num_cols = min(THREADS_PER_VECTOR,row_end - jj);
 
             sdata[threadIdx.x] = thread_lane < num_cols ? A_column_indices[jj + thread_lane] : 0;
+            vdata[threadIdx.x] = thread_lane < num_cols ? A_values[jj + thread_lane] : 0;
 
             for(IndexType kk = 0; kk < num_cols; kk++)
             {
                 IndexType col = sdata[vector_lane*THREADS_PER_VECTOR + kk];
-                // sum -= fetch_x<UseCache>(col*THREADS_PER_VECTOR + thread_lane, X_values);
-                sum -= X_values[col*THREADS_PER_VECTOR + thread_lane];
+                ValueType val = vdata[vector_lane*THREADS_PER_VECTOR + kk];
+                sum = reduce(sum, combine(val, X_values[col*THREADS_PER_VECTOR + thread_lane]));
             }
         }
 
