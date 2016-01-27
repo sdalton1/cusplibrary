@@ -14,6 +14,9 @@
  *  limitations under the License.
  */
 
+#ifndef __CUSP_COO_MATRIX_H__
+#define __CUSP_COO_MATRIX_H__
+
 #include <cusp/array1d.h>
 #include <cusp/convert.h>
 #include <cusp/format_utils.h>
@@ -392,4 +395,6 @@ coo_matrix_view<Array1,Array2,Array3,IndexType,ValueType,MemorySpace>
 }
 
 } // end namespace cusp
+
+#endif // __CUSP_COO_MATRIX_H__
 

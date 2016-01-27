@@ -14,6 +14,9 @@
  *  limitations under the License.
  */
 
+#ifndef __CUSP_COPY_H__
+#define __CUSP_COPY_H__
+
 #include <cusp/detail/config.h>
 
 #include <cusp/detail/type_traits.h>
@@ -49,4 +52,6 @@ void copy(const SourceType& src, DestinationType& dst)
 }
 
 } // end namespace cusp
+
+#endif // __CUSP_COPY_H__
 

@@ -14,6 +14,9 @@
  *  limitations under the License.
  */
 
+#ifndef __CUSP_MULTIPLY_H__
+#define __CUSP_MULTIPLY_H__
+
 #include <cusp/detail/config.h>
 #include <cusp/detail/type_traits.h>
 
@@ -209,4 +212,6 @@ void generalized_spmv(const LinearOperator&  A,
 }
 
 } // end namespace cusp
+
+#endif // __CUSP_MULTIPLY_H__
 

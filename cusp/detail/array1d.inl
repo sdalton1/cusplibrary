@@ -14,6 +14,9 @@
  *  limitations under the License.
  */
 
+#ifndef __CUSP_ARRAY1D_H__
+#define __CUSP_ARRAY1D_H__
+
 #include <thrust/swap.h>
 
 namespace cusp
@@ -284,4 +287,5 @@ bool operator!=(const array1d<T,Alloc>& lhs,
 
 } // end namespace cusp
 
+#endif // __CUSP_ARRAY1D_H__
 

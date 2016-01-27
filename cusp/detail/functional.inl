@@ -14,6 +14,8 @@
  *  limitations under the License.
  */
 
+#ifndef __CUSP_FUNCTIONAL_H__
+#define __CUSP_FUNCTIONAL_H__
 
 #include <cusp/detail/config.h>
 
@@ -194,4 +196,6 @@ struct is_valid_coo_index_functor
 
 } // end namespace detail
 } // end namespace cusp
+
+#endif // __CUSP_FUNCTIONAL_H__
 

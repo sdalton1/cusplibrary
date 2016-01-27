@@ -190,11 +190,14 @@ def getCXXFLAGS(mode, backend, warn, warnings_as_errors, hostspblas, CXX):
     if hostspblas == 'mkl':
         result.append('-DINTEL_MKL_SPBLAS')
 
+    # result.append('-v -ftime-report')
+
     return result
 
 
 def getNVCCFLAGS(mode, backend, arch):
     result = ['-arch=' + arch]
+    # result.append(['-Xcompiler', '-ftime-report'])
     if mode == 'debug':
         # turn on debug mode
         # XXX make this work when we've debugged nvcc -G

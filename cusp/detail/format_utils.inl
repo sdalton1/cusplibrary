@@ -14,6 +14,9 @@
  *  limitations under the License.
  */
 
+#ifndef __CUSP_FORMAT_UTILS_H__
+#define __CUSP_FORMAT_UTILS_H__
+
 #include <cusp/array1d.h>
 #include <cusp/array2d.h>
 
@@ -181,4 +184,6 @@ size_t compute_optimal_entries_per_row(const ArrayType& row_offsets,
 }
 
 } // end namespace cusp
+
+#endif // __CUSP_FORMAT_UTILS_H__
 

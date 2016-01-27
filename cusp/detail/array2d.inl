@@ -14,6 +14,9 @@
  *  limitations under the License.
  */
 
+#ifndef __CUSP_ARRAY2D_H__
+#define __CUSP_ARRAY2D_H__
+
 namespace cusp
 {
 
@@ -320,4 +323,6 @@ bool operator!=(const array2d_view<Array1,Orientation1>& lhs,
 } // end namespace cusp
 
 #include <cusp/convert.h>
+
+#endif // __CUSP_ARRAY2D_H__
 

@@ -456,6 +456,7 @@ nonsym_bridson_ainv<ValueType,MemorySpace>
     detail::convert_to_device_csr(wt_factor, w);
     cusp::transpose(w, w_t);
     detail::convert_to_device_csr(z_factor, z);
+    std::cout << "z entries: " << z.num_entries << std::endl;
 }
 
 // linear operator

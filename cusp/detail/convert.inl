@@ -14,6 +14,8 @@
  *  limitations under the License.
  */
 
+#ifndef __CUSP_CONVERT_H__
+#define __CUSP_CONVERT_H__
 
 #include <cusp/detail/config.h>
 
@@ -51,4 +53,6 @@ void convert(const SourceType& src, DestinationType& dst)
 }
 
 } // end namespace cusp
+
+#endif // __CUSP_CONVERT_H__
 

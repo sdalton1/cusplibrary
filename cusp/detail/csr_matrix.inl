@@ -14,6 +14,9 @@
  *  limitations under the License.
  */
 
+#ifndef __CUSP_CSR_MATRIX_H__
+#define __CUSP_CSR_MATRIX_H__
+
 #include <cusp/format_utils.h>
 
 namespace cusp
@@ -97,4 +100,6 @@ csr_matrix_view<ArrayType1,ArrayType2,ArrayType3,IndexType,ValueType,MemorySpace
 } // end namespace cusp
 
 #include <cusp/convert.h>
+
+#endif // __CUSP_CSR_MATRIX_H__
 

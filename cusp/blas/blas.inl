@@ -14,6 +14,9 @@
  *  limitations under the License.
  */
 
+#ifndef __CUSP_BLAS_H__
+#define __CUSP_BLAS_H__
+
 #include <cusp/array1d.h>
 #include <cusp/complex.h>
 #include <cusp/exception.h>
@@ -869,4 +872,6 @@ void trsm(const thrust::detail::execution_policy_base<DerivedPolicy> &exec,
 
 } // end namespace blas
 } // end namespace cusp
+
+#endif // __CUSP_BLAS_H__
 
