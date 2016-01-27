@@ -14,6 +14,8 @@
  *  limitations under the License.
  */
 
+#ifdef __CUSP_LIB_IMPL__
+
 #include <cusp/array1d.h>
 #include <cusp/precond/aggregation/strength.h>
 #include <cusp/precond/aggregation/aggregate.h>
@@ -187,4 +189,12 @@ void smoothed_aggregation<IndexType,ValueType,MemorySpace,SmootherType,SolverTyp
 } // end namespace aggregation
 } // end namespace precond
 } // end namespace cusp
+
+#endif // end __CUSP_LIB_IMPL__
+
+#ifdef __CUSP_LIB_DEFS__
+
+cusp::precond::aggregation::smoothed_aggregation<int,double,cusp::device_memory,thrust::use_default,thrust::use_default,thrust::use_default> A;
+
+#endif // end __CUSP_LIB_DEFS__
 
