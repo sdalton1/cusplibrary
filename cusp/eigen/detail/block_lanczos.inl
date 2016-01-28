@@ -352,12 +352,10 @@ void block_lanczos(const MatrixType& A,
         /*                   thrust::raw_pointer_cast(&temp2(0,0)));*/
         /*cusp::transpose(temp2, AX);*/
         multiply_time += multiply_timer.milliseconds_elapsed();
-        printf("1\n");
 
         timer gemm_timer;
         detail::gemm(cublas_handle, X_start, AX, TD_start, CUBLAS_OP_T, CUBLAS_OP_N);
         gemm2_time += gemm_timer.milliseconds_elapsed();
-        printf("2\n");
 
         timer inner_loop_timer;
         for(int j = 0; j < maxinner; j++)
@@ -385,11 +383,8 @@ void block_lanczos(const MatrixType& A,
             detail::SimpleGEMM(X_start, TD_start, X_stop);
             /*gemm(X_start, TD_start, X_stop);*/
             gemm1_time += gemm1_timer.milliseconds_elapsed();
-            printf("3\n");
 
-            printf("AX.values[%lu] (%lu) X_stop.values[%lu] (%lu)\n", AX.values.size(), AX.num_entries, X_stop.values.size(), X_stop.num_entries);
             cusp::blas::axpby(AX.values, X_stop.values, X_stop.values, ValueType(1), ValueType(-1));
-            printf("4\n");
 
             if( j > 0 )
             {
@@ -398,12 +393,10 @@ void block_lanczos(const MatrixType& A,
                 /*gemm(X_drag, TE_start, X_stop, CUBLAS_OP_N, CUBLAS_OP_T, ValueType(-1), ValueType(1));*/
                 gemm1_time += gemm_timer.milliseconds_elapsed();
             }
-            printf("5\n");
 
             timer ortho_timer;
             detail::modifiedGramSchmidt(X_stop, TE_stop);
             ortho_time += ortho_timer.milliseconds_elapsed();
-            printf("6\n");
 
             timer multiply_timer;
             /*cusp::transpose(X_stop, temp1);*/
