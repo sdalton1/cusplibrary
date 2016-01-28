@@ -128,10 +128,12 @@ void SimpleGEMM(const Array2d& A, const Array2d& B, Array2d& C,
                 typename Array2d::value_type alpha = 1,
                 typename Array2d::value_type beta  = 0)
 {
+    using namespace cusp::system::cuda;
+
     typedef typename Array2d::value_type ValueType;
 
     const size_t THREADS_PER_BLOCK  = 256;
-    const size_t NUM_BLOCKS = 0; //cusp::detail::device::DIVIDE_INTO(A.num_rows, THREADS_PER_BLOCK);
+    const size_t NUM_BLOCKS = DIVIDE_INTO(A.num_rows, THREADS_PER_BLOCK);
 
     const int m = A.num_rows;
     const int n = B.num_cols;
@@ -191,6 +193,79 @@ void modifiedGramSchmidt(Array2d1& Q, Array2d2& R)
     modifiedGramSchmidt(Q,R,typename Array2d1::format(), typename Array2d2::format());
 }
 
+template<typename Array2d1, typename Array1d1, typename Array1d2>
+void gemv(cublasHandle_t& cublas_handle,
+          const Array2d1& A,
+          const Array1d1& x,
+          const Array1d2& y)
+{
+    using namespace cusp::blas;
+    typedef typename Array2d1::value_type ValueType;
+
+    cublasOperation_t trans = CUBLAS_OP_N;
+
+    int m = A.num_rows;
+    int n = A.num_cols;
+    int lda = A.pitch;
+
+    ValueType alpha = 1.0;
+    ValueType beta = 0.0;
+
+    const ValueType *A_p = thrust::raw_pointer_cast(&A(0,0));
+    const ValueType *x_p = thrust::raw_pointer_cast(&x[0]);
+    ValueType *y_p = thrust::raw_pointer_cast(&y[0]);
+
+    cublasStatus_t result = cublas::detail::gemv(cublas_handle,
+                                                 trans, m, n, alpha,
+                                                 A_p, lda, x_p, 1, beta, y_p, 1);
+
+    if(result != CUBLAS_STATUS_SUCCESS)
+        throw cusp::runtime_exception("CUBLAS gemv failed!");
+}
+
+template<typename Array2d1, typename Array2d2, typename Array2d3>
+void gemm(cublasHandle_t& cublas_handle,
+          const Array2d1& A,
+          const Array2d2& B,
+          Array2d3& C,
+          cublasOperation_t transa = CUBLAS_OP_N,
+          cublasOperation_t transb = CUBLAS_OP_N,
+          typename Array2d1::value_type alpha = 1,
+          typename Array2d1::value_type beta  = 0)
+{
+    using namespace cusp::blas;
+    typedef typename Array2d1::value_type ValueType;
+
+    int m = transa == CUBLAS_OP_N ? A.num_rows : A.num_cols;
+    int n = transb == CUBLAS_OP_N ? B.num_cols : B.num_rows;
+    int k = transb == CUBLAS_OP_N ? B.num_rows : B.num_cols;
+    int lda = A.pitch;
+    int ldb = B.pitch;
+    int ldc = C.pitch;
+
+    const ValueType * A_p = thrust::raw_pointer_cast(&A(0,0));
+    const ValueType * B_p = thrust::raw_pointer_cast(&B(0,0));
+    ValueType * C_p = thrust::raw_pointer_cast(&C(0,0));
+
+    cublasStatus_t result = cublas::detail::gemm(cublas_handle,
+                                                 transa, transb,
+                                                 m, n, k, alpha, A_p, lda,
+                                                 B_p, ldb, beta, C_p, ldc);
+
+    if(result != CUBLAS_STATUS_SUCCESS)
+        throw cusp::runtime_exception("CUBLAS gemm failed!");
+}
+
+int syev(const int s, float * T_hp, float * eigvals_p)
+{
+    return LAPACKE_ssyev(LAPACK_ROW_MAJOR, 'V', 'U', s, T_hp, s, eigvals_p);
+}
+
+int syev(const int s, double * T_hp, double * eigvals_p)
+{
+    return LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'V', 'U', s, T_hp, s, eigvals_p);
+}
+
 template<typename MatrixType, typename Array2d, typename Array1d>
 void Partition(const MatrixType& A, const Array2d& X0, Array1d& partition, int blocksize, int maxouter, int maxinner)
 {
@@ -207,13 +282,12 @@ void Partition(const MatrixType& A, const Array2d& X0, Array1d& partition, int b
     const int s  = (maxinner+1) * blocksize;
     maxinner = std::min(N, maxinner);
 
-    cublasHandle_t handle;
+    cublasHandle_t cublas_handle;
 
-    if(cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
-    {
-      throw cusp::runtime_exception("cublasCreate failed");
-    }
-    cusp::cublas::execution_policy cublas(handle);
+    if(cublasCreate(&cublas_handle) != CUBLAS_STATUS_SUCCESS)
+        throw cusp::runtime_exception("cublasCreate failed");
+
+    /* cusp::cublas::execution_policy cublas(handle); */
 
     timer initial_timer;
     Array2dColumn AX(N,blocksize);
@@ -264,10 +338,12 @@ void Partition(const MatrixType& A, const Array2d& X0, Array1d& partition, int b
         /*                   thrust::raw_pointer_cast(&temp2(0,0)));*/
         /*cusp::transpose(temp2, AX);*/
         multiply_time += multiply_timer.milliseconds_elapsed();
+        printf("1\n");
 
         timer gemm_timer;
-        /* gemm(cublas, X_start, AX, TD_start, CUBLAS_OP_T, CUBLAS_OP_N); */
+        gemm(cublas_handle, X_start, AX, TD_start, CUBLAS_OP_T, CUBLAS_OP_N);
         gemm2_time += gemm_timer.milliseconds_elapsed();
+        printf("2\n");
 
         timer inner_loop_timer;
         for(int j = 0; j < maxinner; j++)
@@ -295,8 +371,12 @@ void Partition(const MatrixType& A, const Array2d& X0, Array1d& partition, int b
             SimpleGEMM(X_start, TD_start, X_stop);
             /*gemm(X_start, TD_start, X_stop);*/
             gemm1_time += gemm1_timer.milliseconds_elapsed();
+            printf("3\n");
 
+            printf("AX.values[%lu] X_stop.values[%lu]\n", AX.values.size(), X_stop.values.size());
             cusp::blas::axpby(AX.values, X_stop.values, X_stop.values, ValueType(1), ValueType(-1));
+            printf("4\n");
+
             if( j > 0 )
             {
                 timer gemm_timer;
@@ -304,10 +384,12 @@ void Partition(const MatrixType& A, const Array2d& X0, Array1d& partition, int b
                 /*gemm(X_drag, TE_start, X_stop, CUBLAS_OP_N, CUBLAS_OP_T, ValueType(-1), ValueType(1));*/
                 gemm1_time += gemm_timer.milliseconds_elapsed();
             }
+            printf("5\n");
 
             timer ortho_timer;
             modifiedGramSchmidt(X_stop, TE_stop);
             ortho_time += ortho_timer.milliseconds_elapsed();
+            printf("6\n");
 
             timer multiply_timer;
             /*cusp::transpose(X_stop, temp1);*/
@@ -319,7 +401,7 @@ void Partition(const MatrixType& A, const Array2d& X0, Array1d& partition, int b
             multiply_time += multiply_timer.milliseconds_elapsed();
 
             timer gemm2_timer;
-            /* cusp::blas::gemm(cublas, X_stop, AX, TD_stop, CUBLAS_OP_T, CUBLAS_OP_N); */
+            gemm(cublas_handle, X_stop, AX, TD_stop, CUBLAS_OP_T, CUBLAS_OP_N);
             /*std::cout << " X_stop.T*AX time : " << gemm2_timer.milliseconds_elapsed() << " (ms)." << std::endl;*/
             gemm2_time += gemm2_timer.milliseconds_elapsed();
         }
@@ -344,15 +426,16 @@ void Partition(const MatrixType& A, const Array2d& X0, Array1d& partition, int b
         std::cout << " Eigensolver (INIT) time : " << eigen_init_timer.milliseconds_elapsed() << " (ms)." << std::endl;
 
         timer syev_timer;
-        int info = 0; //cusp::lapack::syev(s, T_hp, eigvals);
+        syev(s, T_hp, eigvals_p);
+        /* cusp::lapack::syev(T_h, eigvals, V); */
+        int info = syev(s, T_hp, eigvals_p);
         std::cout << " Eigensolver (SYEV) time : " << syev_timer.milliseconds_elapsed() << " (ms)." << std::endl;
-        if(info) throw cusp::runtime_exception("SYEV Failed!\n");
 
         V = T_h;
 
         timer vector_timer;
         /*gemm(X, V, Evects);*/
-        /* cusp::blas::gemv(cublas, X, V.column(0), Evects.column(0)); */
+        gemv(cublas_handle, X, V.column(0), Evects.column(0));
         std::cout << " Eigensolver (VECTOR) time : " << vector_timer.milliseconds_elapsed() << " (ms)." << std::endl;
     }
 
@@ -377,7 +460,7 @@ int main(int argc, char*argv[])
     typedef float ValueType;
     typedef cusp::device_memory MemorySpace;
 
-    size_t size = 10;
+    size_t size = 256;
     cusp::csr_matrix<IndexType, ValueType, MemorySpace> A;
 
     if (argc == 1)
