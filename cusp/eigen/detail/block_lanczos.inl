@@ -363,11 +363,9 @@ void block_lanczos(const MatrixType& A,
             int xdrag = (j-1)*Sx;
             int xstart= j*Sx;
             int xstop = (j+1)*Sx;
-            int xshift= (j+2)*Sx;
 
             int tstart= j*St;
             int tstop = (j+1)*St;
-            int tshift= (j+2)*St;
 
             Array2dColumnView X_drag (N, blocksize, N, cusp::make_array1d_view(X.values.subarray(xdrag,Sx)));
             Array2dColumnView X_start(N, blocksize, N, cusp::make_array1d_view(X.values.subarray(xstart,Sx)));
@@ -434,7 +432,6 @@ void block_lanczos(const MatrixType& A,
 
         timer syev_timer;
         detail::syev(s, T_hp, eigvals_p);
-        /* cusp::lapack::syev(T_h, eigvals, V); */
         int info = detail::syev(s, T_hp, eigvals_p);
         std::cout << " Eigensolver (SYEV) time : " << syev_timer.milliseconds_elapsed() << " (ms)." << std::endl;
 
