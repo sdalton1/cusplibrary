@@ -38,9 +38,7 @@ structured_mats = [ mat + (path,) for mat in structured_mats]
 unstructured_mats = [ mat + (path,) for mat in unstructured_mats]
 
 # assemble suite of matrices
-#trials = structured_mats + unstructured_mats
-# trials = unstructured_mats
-trials = [('2D_5pt','structured_2d_5pt.mtx', path)]
+trials = unstructured_mats
 
 def run_tests(num_iterations):
 
@@ -52,9 +50,11 @@ def run_tests(num_iterations):
         # execute the benchmark on this file
         for source in np.random.randint(0, A.shape[0], size=num_iterations) :
             # setup the command to execute
-            proc = subprocess.Popen([binary_filename, matrix_filename, str(source)], stdout=subprocess.PIPE, shell=True)
+            # proc = subprocess.Popen([binary_filename, matrix_filename, str(source)], stdout=subprocess.PIPE, shell=True)
+            proc = subprocess.Popen([binary_filename, matrix_filename, str(source)], stdout=subprocess.PIPE)
             (out, err) = proc.communicate()
-            bfs_data = out.split("\n")[2].split(",")
-            print bfs_data
+            print out
+            # bfs_data = out.split("\n")[2].split(",")
+            # print bfs_data
 
-run_tests(10)
+run_tests(1)
