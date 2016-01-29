@@ -170,7 +170,7 @@ protected:
 
             // Bind bitmask texture
             int bytes = (graph_slice->nodes + 8 - 1) / 8;
-            cudaChannelFormatDesc bitmask_desc = cudaCreateChannelDesc<unsigned char>();
+            cudaChannelFormatDesc bitmask_desc = cudaCreateChannelDesc<VisitedMask>();
             if (retval = util::B40CPerror(cudaBindTexture(
                                               0,
                                               two_phase::contract_atomic::BitmaskTex<VisitedMask>::ref,

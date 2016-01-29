@@ -63,7 +63,23 @@ struct RowOffsetTex
 template <typename SizeT>
 texture<SizeT, cudaTextureType1D, cudaReadModeElementType> RowOffsetTex<SizeT>::ref;
 
+template<typename SizeT, typename VertexId>
+struct Tex
+{
+  static __device__ __forceinline__ VertexId fetch(SizeT* row_offsets, VertexId row_id)
+  {
+     return row_offsets[row_id];
+  }
+};
 
+template<typename VertexId>
+struct Tex<int, VertexId>
+{
+  static __device__ __forceinline__ VertexId fetch(int* row_offsets, VertexId row_id)
+  {
+     return tex1Dfetch(RowOffsetTex<int>::ref, row_id);
+  }
+};
 
 /**
  * Derivation of KernelPolicy that encapsulates tile-processing routines
@@ -167,24 +183,6 @@ struct Cta
 		template <int LOAD, int VEC, int dummy = 0>
 		struct Iterate
 		{
-      template<typename Tile, typename T>
-      struct Tex
-      {
-          static __device__ __forceinline__ VertexId fetch(Tile* tile, VertexId& row_id)
-          {
-             return tile->row_offsets[row_id];
-          }
-      };
-
-      template<typename Tile>
-      struct Tex<Tile, int>
-      {
-          static __device__ __forceinline__ VertexId fetch(Tile* tile, VertexId& row_id)
-          {
-             return tex1Dfetch(RowOffsetTex<int>::ref, row_id);
-          }
-      };
-
 			/**
 			 * Init
 			 */
@@ -210,10 +208,8 @@ struct Cta
 
 					// Load neighbor row range from d_row_offsets
 					Vec2SizeT row_range;
-					row_range.x = Tex<Tile,SizeT>::fetch(tile, row_id);
-					row_range.y = Tex<Tile,SizeT>::fetch(tile, row_id + 1);
-					/* row_range.x = tex1Dfetch(RowOffsetTex<SizeT>::ref, row_id); */
-					/* row_range.y = tex1Dfetch(RowOffsetTex<SizeT>::ref, row_id + 1); */
+					row_range.x = Tex<SizeT, VertexId>::fetch(cta->d_row_offsets, row_id);
+					row_range.y = Tex<SizeT, VertexId>::fetch(cta->d_row_offsets, row_id + 1);
 
 					// Node is previously unvisited: compute row offset and length
 					tile->row_offset[LOAD][VEC] = row_range.x;
