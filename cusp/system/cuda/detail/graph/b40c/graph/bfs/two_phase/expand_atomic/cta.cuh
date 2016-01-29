@@ -167,6 +167,24 @@ struct Cta
 		template <int LOAD, int VEC, int dummy = 0>
 		struct Iterate
 		{
+      template<typename Tile, typename T>
+      struct Tex
+      {
+          static __device__ __forceinline__ VertexId fetch(Tile* tile, VertexId& row_id)
+          {
+             return tile->row_offsets[row_id];
+          }
+      };
+
+      template<typename Tile>
+      struct Tex<Tile, int>
+      {
+          static __device__ __forceinline__ VertexId fetch(Tile* tile, VertexId& row_id)
+          {
+             return tex1Dfetch(RowOffsetTex<int>::ref, row_id);
+          }
+      };
+
 			/**
 			 * Init
 			 */
@@ -192,8 +210,10 @@ struct Cta
 
 					// Load neighbor row range from d_row_offsets
 					Vec2SizeT row_range;
-					row_range.x = tex1Dfetch(RowOffsetTex<SizeT>::ref, row_id);
-					row_range.y = tex1Dfetch(RowOffsetTex<SizeT>::ref, row_id + 1);
+					row_range.x = Tex<Tile,SizeT>::fetch(tile, row_id);
+					row_range.y = Tex<Tile,SizeT>::fetch(tile, row_id + 1);
+					/* row_range.x = tex1Dfetch(RowOffsetTex<SizeT>::ref, row_id); */
+					/* row_range.y = tex1Dfetch(RowOffsetTex<SizeT>::ref, row_id + 1); */
 
 					// Node is previously unvisited: compute row offset and length
 					tile->row_offset[LOAD][VEC] = row_range.x;
