@@ -32,9 +32,9 @@
 
 #pragma once
 
-#include "io/modified_load.cuh"
-#include "memset_kernel.cuh"
-#include "error_utils.cuh"
+#include "../util/io/modified_load.cuh"
+#include "../util/memset_kernel.cuh"
+#include "../util/error_utils.cuh"
 
 B40C_NS_PREFIX
 
@@ -157,7 +157,7 @@ public:
 	{
 		cudaError_t retval = cudaSuccess;
 		if (d_sync) {
-			retval = util::B40CPerror<0>(cudaFree(d_sync), "GlobalBarrier cudaFree d_sync failed: ", __FILE__, __LINE__);
+			retval = util::B40CPerror(cudaFree(d_sync), "GlobalBarrier cudaFree d_sync failed: ", __FILE__, __LINE__);
 			d_sync = NULL;
 		}
 		sync_bytes = 0;
@@ -186,19 +186,19 @@ public:
 			if (new_sync_bytes > sync_bytes) {
 
 				if (d_sync) {
-					if (retval = util::B40CPerror<0>(cudaFree(d_sync),
+					if (retval = util::B40CPerror(cudaFree(d_sync),
 						"GlobalBarrierLifetime cudaFree d_sync failed", __FILE__, __LINE__)) break;
 				}
 
 				sync_bytes = new_sync_bytes;
 
-				if (retval = util::B40CPerror<0>(cudaMalloc((void**) &d_sync, sync_bytes),
+				if (retval = util::B40CPerror(cudaMalloc((void**) &d_sync, sync_bytes),
 					"GlobalBarrierLifetime cudaMalloc d_sync failed", __FILE__, __LINE__)) break;
 
 				// Initialize to zero
 				util::MemsetKernel<SyncFlag><<<(sweep_grid_size + 128 - 1) / 128, 128>>>(
 					d_sync, 0, sweep_grid_size);
-				if (retval = util::B40CPerror<0>(cudaThreadSynchronize(),
+				if (retval = util::B40CPerror(cudaThreadSynchronize(),
 					"GlobalBarrierLifetime MemsetKernel d_sync failed", __FILE__, __LINE__)) break;
 			}
 		} while (0);
@@ -214,3 +214,4 @@ public:
 } // namespace b40c
 
 B40C_NS_POSTFIX
+

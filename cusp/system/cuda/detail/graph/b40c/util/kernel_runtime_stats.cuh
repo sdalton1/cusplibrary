@@ -32,8 +32,8 @@
 
 #pragma once
 
-#include "error_utils.cuh"
-#include "cuda_properties.cuh"
+#include "../util/error_utils.cuh"
+#include "../util/cuda_properties.cuh"
 
 B40C_NS_PREFIX
 
@@ -168,20 +168,20 @@ public:
 
 				// Save current gpu
 				int current_gpu;
-				if (retval = util::B40CPerror<0>(cudaGetDevice(&current_gpu),
+				if (retval = util::B40CPerror(cudaGetDevice(&current_gpu),
 					"KernelRuntimeStatsLifetime cudaGetDevice failed: ", __FILE__, __LINE__)) break;
 
 				// Deallocate
-				if (retval = util::B40CPerror<0>(cudaSetDevice(gpu),
+				if (retval = util::B40CPerror(cudaSetDevice(gpu),
 					"KernelRuntimeStatsLifetime cudaSetDevice failed: ", __FILE__, __LINE__)) break;
-				if (retval = util::B40CPerror<0>(cudaFree(d_stat),
+				if (retval = util::B40CPerror(cudaFree(d_stat),
 					"KernelRuntimeStatsLifetime cudaFree d_stat failed: ", __FILE__, __LINE__)) break;
 
 				d_stat = NULL;
 				gpu = B40C_INVALID_DEVICE;
 
 				// Restore current gpu
-				if (retval = util::B40CPerror<0>(cudaSetDevice(current_gpu),
+				if (retval = util::B40CPerror(cudaSetDevice(current_gpu),
 					"KernelRuntimeStatsLifetime cudaSetDevice failed: ", __FILE__, __LINE__)) break;
 			}
 
@@ -217,19 +217,19 @@ public:
 				if (retval = HostReset()) break;
 
 				// Remember device
-				if (retval = util::B40CPerror<0>(cudaGetDevice(&gpu),
+				if (retval = util::B40CPerror(cudaGetDevice(&gpu),
 					"KernelRuntimeStatsLifetime cudaGetDevice failed: ", __FILE__, __LINE__)) break;
 
 				// Reallocate
 				stat_bytes = new_stat_bytes;
 
-				if (retval = util::B40CPerror<0>(cudaMalloc((void**) &d_stat, stat_bytes),
+				if (retval = util::B40CPerror(cudaMalloc((void**) &d_stat, stat_bytes),
 					"KernelRuntimeStatsLifetime cudaMalloc d_stat failed", __FILE__, __LINE__)) break;
 
 				// Initialize to zero
 				util::MemsetKernel<unsigned long long><<<(grid_size + 128 - 1) / 128, 128>>>(
 					d_stat, 0, grid_size);
-				if (retval = util::B40CPerror<0>(cudaThreadSynchronize(),
+				if (retval = util::B40CPerror(cudaThreadSynchronize(),
 					"KernelRuntimeStatsLifetime MemsetKernel d_stat failed", __FILE__, __LINE__)) break;
 			}
 		} while (0);
@@ -255,18 +255,18 @@ public:
 
 			// Save current gpu
 			int current_gpu;
-			if (retval = util::B40CPerror<0>(cudaGetDevice(&current_gpu),
+			if (retval = util::B40CPerror(cudaGetDevice(&current_gpu),
 				"KernelRuntimeStatsLifetime cudaGetDevice failed: ", __FILE__, __LINE__)) break;
 
-			if (retval = util::B40CPerror<0>(cudaSetDevice(gpu),
+			if (retval = util::B40CPerror(cudaSetDevice(gpu),
 				"KernelRuntimeStatsLifetime cudaSetDevice failed: ", __FILE__, __LINE__)) break;
 
 			// Copy out stats
-			if (retval = util::B40CPerror<0>(cudaMemcpy(h_stat, d_stat, stat_bytes, cudaMemcpyDeviceToHost),
+			if (retval = util::B40CPerror(cudaMemcpy(h_stat, d_stat, stat_bytes, cudaMemcpyDeviceToHost),
 				"KernelRuntimeStatsLifetime d_stat failed", __FILE__, __LINE__)) break;
 
 			// Restore current gpu
-			if (retval = util::B40CPerror<0>(cudaSetDevice(current_gpu),
+			if (retval = util::B40CPerror(cudaSetDevice(current_gpu),
 				"KernelRuntimeStatsLifetime cudaSetDevice failed: ", __FILE__, __LINE__)) break;
 
 			// Compute runtimes, find max
