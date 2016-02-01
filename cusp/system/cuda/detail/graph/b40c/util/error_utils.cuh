@@ -43,6 +43,7 @@ namespace util {
 /**
  * Displays error message in accordance with debug mode
  */
+template<int dummy>
 cudaError_t B40CPerror(
 	cudaError_t error,
 	const char *message,
@@ -60,6 +61,7 @@ cudaError_t B40CPerror(
 /**
  * Checks and resets last CUDA error.  If set, displays last error message in accordance with debug mode.
  */
+template<int dummy>
 cudaError_t B40CPerror(
 	const char *message,
 	const char *filename,
@@ -78,6 +80,7 @@ cudaError_t B40CPerror(
 /**
  * Displays error message in accordance with debug mode
  */
+template<int dummy>
 cudaError_t B40CPerror(
 	cudaError_t error,
 	bool print = true)
@@ -93,6 +96,7 @@ cudaError_t B40CPerror(
 /**
  * Checks and resets last CUDA error.  If set, displays last error message in accordance with debug mode.
  */
+template<int dummy>
 cudaError_t B40CPerror(
 	bool print = true)
 {

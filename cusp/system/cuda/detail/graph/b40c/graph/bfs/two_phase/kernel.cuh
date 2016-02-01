@@ -44,6 +44,8 @@
 #include <b40c/graph/bfs/two_phase/expand_atomic/kernel.cuh>
 #include <b40c/graph/bfs/two_phase/contract_atomic/kernel.cuh>
 
+B40C_NS_PREFIX
+
 namespace b40c {
 namespace graph {
 namespace bfs {
@@ -317,3 +319,4 @@ void Kernel(
 } // namespace graph
 } // namespace b40c
 
+B40C_NS_POSTFIX

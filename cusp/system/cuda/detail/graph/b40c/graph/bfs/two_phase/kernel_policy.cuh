@@ -35,6 +35,8 @@
 #include <b40c/graph/bfs/two_phase/contract_atomic/kernel_policy.cuh>
 #include <b40c/graph/bfs/two_phase/expand_atomic/kernel_policy.cuh>
 
+B40C_NS_PREFIX
+
 namespace b40c {
 namespace graph {
 namespace bfs {
@@ -170,4 +172,6 @@ struct KernelPolicy : _ProblemType
 } // namespace bfs
 } // namespace graph
 } // namespace b40c
+
+B40C_NS_POSTFIX
 
