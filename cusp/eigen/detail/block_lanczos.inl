@@ -238,6 +238,35 @@ void gemv(cublasHandle_t& cublas_handle,
         throw cusp::runtime_exception("CUBLAS gemv failed!");
 }
 
+template<typename Array2d1, typename Array1d1, typename Array1d2>
+void gemv_t(cublasHandle_t& cublas_handle,
+          const Array2d1& A,
+          const Array1d1& x,
+          const Array1d2& y)
+{
+    typedef typename Array2d1::value_type ValueType;
+
+    cublasOperation_t trans = CUBLAS_OP_T;
+
+    int m = A.num_cols;
+    int n = A.num_rows;
+    int lda = A.pitch;
+
+    ValueType alpha = 1.0;
+    ValueType beta = 0.0;
+
+    const ValueType *A_p = thrust::raw_pointer_cast(&A(0,0));
+    const ValueType *x_p = thrust::raw_pointer_cast(&x[0]);
+    ValueType *y_p = thrust::raw_pointer_cast(&y[0]);
+
+    cublasStatus_t result = cusp::blas::cublas::detail::gemv(cublas_handle,
+                            trans, m, n, alpha,
+                            A_p, lda, x_p, 1, beta, y_p, 1);
+
+    if(result != CUBLAS_STATUS_SUCCESS)
+        throw cusp::runtime_exception("CUBLAS gemv failed!");
+}
+
 template<typename Array2d1, typename Array2d2, typename Array2d3>
 void gemm(cublasHandle_t& cublas_handle,
           const Array2d1& A,
@@ -268,6 +297,38 @@ void gemm(cublasHandle_t& cublas_handle,
 
     if(result != CUBLAS_STATUS_SUCCESS)
         throw cusp::runtime_exception("CUBLAS gemm failed!");
+}
+
+template<typename Array2d1, typename Array2d2, typename Array2d3>
+void gemm_t(cublasHandle_t& cublas_handle,
+          const Array2d1& A,
+          const Array2d2& B,
+          Array2d3& C,
+          cublasOperation_t transa = CUBLAS_OP_N,
+          cublasOperation_t transb = CUBLAS_OP_N,
+          typename Array2d1::value_type alpha = 1,
+          typename Array2d1::value_type beta  = 0)
+{
+    typedef typename Array2d1::value_type ValueType;
+
+    int m = transa != CUBLAS_OP_N ? A.num_rows : A.num_cols;
+    int n = transb != CUBLAS_OP_N ? B.num_cols : B.num_rows;
+    int k = transb != CUBLAS_OP_N ? B.num_rows : B.num_cols;
+    int lda = A.pitch;
+    int ldb = B.pitch;
+    int ldc = C.pitch;
+
+    const ValueType * A_p = thrust::raw_pointer_cast(&A(0,0));
+    const ValueType * B_p = thrust::raw_pointer_cast(&B(0,0));
+    ValueType * C_p = thrust::raw_pointer_cast(&C(0,0));
+
+    cublasStatus_t result = cusp::blas::cublas::detail::gemm(cublas_handle,
+                            transa, transb,
+                            m, n, k, alpha, A_p, lda,
+                            B_p, ldb, beta, C_p, ldc);
+
+    if(result != CUBLAS_STATUS_SUCCESS)
+        throw cusp::runtime_exception("CUBLAS gemm_t failed!");
 }
 
 int syev(const int s, float * T_hp, float * eigvals_p)
@@ -325,11 +386,15 @@ void block_lanczos(const MatrixType& A,
                    const size_t maxouter,
                    const size_t maxinner_)
 {
-    typedef typename MatrixType::value_type ValueType;
+    typedef typename MatrixType::value_type   ValueType;
     typedef typename MatrixType::memory_space MemorySpace;
 
-    typedef cusp::array2d<ValueType,MemorySpace,cusp::column_major> Array2dColumn;
-    typedef typename Array2dColumn::view Array2dColumnView;
+    typedef cusp::array1d<ValueType,cusp::host_memory> HostArray1d;
+    typedef cusp::array1d<ValueType,MemorySpace>       MemArray1d;
+
+    typedef cusp::array2d<ValueType,cusp::host_memory,cusp::row_major> HostArray2dRow;
+    typedef cusp::array2d<ValueType,MemorySpace,cusp::row_major>       MemArray2dRow;
+    typedef typename MemArray2dRow::view                               MemArray2dRowView;
 
     const size_t N  = A.num_rows;
     const size_t maxinner = std::min(N, maxinner_);
@@ -344,35 +409,32 @@ void block_lanczos(const MatrixType& A,
         throw cusp::runtime_exception("cublasCreate failed");
 
     timer initial_timer;
-    Array2dColumn AX(N,blocksize);
-    Array2dColumn X(N,s);
-    Array2dColumn V(s,s);
-    Array2dColumn Evects(N,s);
-    cusp::array1d<ValueType,MemorySpace> TD(s*blocksize,0);
-    cusp::array1d<ValueType,MemorySpace> TE(s*blocksize,0);
+    MemArray2dRow AX(N,blocksize);
+    MemArray2dRow X(N,s);
+    MemArray2dRow V(s,s);
+    MemArray2dRow Evects(N,s);
+    MemArray1d TD(s*blocksize,0);
+    MemArray1d TE(s*blocksize,0);
 
-    cusp::array1d<ValueType,cusp::host_memory> eigvals(s);
-    cusp::array1d<ValueType,cusp::host_memory> TD_h(s*blocksize);
-    cusp::array1d<ValueType,cusp::host_memory> TE_h(s*blocksize);
-    cusp::array2d<ValueType,cusp::host_memory> T_h(s,s,0);
-    cusp::array2d<ValueType,MemorySpace> temp1(N, blocksize);
-    cusp::array2d<ValueType,MemorySpace> temp2(N, blocksize);
+    HostArray1d eigvals(s);
+    HostArray1d TD_h(s*blocksize);
+    HostArray1d TE_h(s*blocksize);
+    HostArray2dRow T_h(s,s,0);
 
     ValueType *T_hp  = thrust::raw_pointer_cast(&T_h(0,0));
     ValueType *eigvals_p = thrust::raw_pointer_cast(&eigvals[0]);
 
     // initialize starting vector to random values in [0,1)
-    Array2dColumnView X_start(N, blocksize, N, cusp::make_array1d_view(X.values));
+    MemArray2dRowView X_start(N, blocksize, blocksize, cusp::make_array1d_view(X.values));
     cusp::blas::copy(cusp::random_array<ValueType>(X_start.num_entries),
                      X_start.values.subarray(0, X_start.num_entries));
 
     // normalize v0
-    cusp::array1d<ValueType,MemorySpace> ones(N, ValueType(1));
-    cusp::blas::scal(ones, ValueType(1) / cusp::blas::nrm2(ones));
+    cusp::constant_array<ValueType> ones(N, ValueType(1) / std::sqrt(N));
     detail::modifiedGramSchmidt(X_start, ones);
 
-    Array2dColumnView TD_init(blocksize, blocksize, blocksize, cusp::make_array1d_view(TD));
-    detail::modifiedGramSchmidt(X_start, TD_init);
+    MemArray2dRowView TD_start(blocksize, blocksize, blocksize, cusp::make_array1d_view(TD));
+    detail::modifiedGramSchmidt(X_start, TD_start);
     std::cout << " Initialization time : " << initial_timer.milliseconds_elapsed() << " (ms)." << std::endl;
 
     float multiply_time = 0;
@@ -382,17 +444,13 @@ void block_lanczos(const MatrixType& A,
 
     for(int i = 0; i < maxouter; i++)
     {
-        Array2dColumnView TD_start(blocksize, blocksize, blocksize, cusp::make_array1d_view(TD));
-        Array2dColumnView X_start(N, blocksize, N, cusp::make_array1d_view(X.values));
-
         timer multiply_timer;
-        cusp::copy(X_start, temp1);
-        cusp::multiply(A, temp1, temp2);
-        cusp::copy(temp2, AX);
+        cusp::multiply(A, X_start, AX);
         multiply_time += multiply_timer.milliseconds_elapsed();
 
         timer gemm_timer;
-        detail::gemm(cublas_handle, X_start, AX, TD_start, CUBLAS_OP_T, CUBLAS_OP_N);
+        // detail::gemm(cublas_handle, X_start, AX, TD_start, CUBLAS_OP_T, CUBLAS_OP_N);
+        detail::gemm_t(cublas_handle, X_start, AX, TD_start, CUBLAS_OP_N, CUBLAS_OP_T);
         gemm2_time += gemm_timer.milliseconds_elapsed();
 
         timer inner_loop_timer;
@@ -405,18 +463,19 @@ void block_lanczos(const MatrixType& A,
             int tstart= j * St;
             int tstop = (j + 1) * St;
 
-            Array2dColumnView X_drag (N, blocksize, N, X.values.subarray(xdrag,Sx));
-            Array2dColumnView X_start(N, blocksize, N, X.values.subarray(xstart,Sx));
-            Array2dColumnView X_stop (N, blocksize, N, X.values.subarray(xstop,Sx));
+            MemArray2dRowView X_drag (N, blocksize, blocksize, X.values.subarray(xdrag,Sx));
+            MemArray2dRowView X_start(N, blocksize, blocksize, X.values.subarray(xstart,Sx));
+            MemArray2dRowView X_stop (N, blocksize, blocksize, X.values.subarray(xstop,Sx));
 
-            Array2dColumnView TD_start(blocksize, blocksize, blocksize, TD.subarray(tstart,St));
-            Array2dColumnView TD_stop (blocksize, blocksize, blocksize, TD.subarray(tstop,St));
+            MemArray2dRowView TD_start(blocksize, blocksize, blocksize, TD.subarray(tstart,St));
+            MemArray2dRowView TD_stop (blocksize, blocksize, blocksize, TD.subarray(tstop,St));
 
-            Array2dColumnView TE_start(blocksize, blocksize, blocksize, TE.subarray(tstart,St));
-            Array2dColumnView TE_stop (blocksize, blocksize, blocksize, TE.subarray(tstop,St));
+            MemArray2dRowView TE_start(blocksize, blocksize, blocksize, TE.subarray(tstart,St));
+            MemArray2dRowView TE_stop (blocksize, blocksize, blocksize, TE.subarray(tstop,St));
 
             timer gemm1_timer;
-            detail::SimpleGEMM(X_start, TD_start, X_stop);
+            // detail::SimpleGEMM(X_start, TD_start, X_stop);
+            detail::gemm_t(cublas_handle, TD_start, X_start, X_stop, CUBLAS_OP_N, CUBLAS_OP_N);
             gemm1_time += gemm1_timer.milliseconds_elapsed();
 
             cusp::blas::axpby(AX.values, X_stop.values, X_stop.values, ValueType(1), ValueType(-1));
@@ -424,7 +483,8 @@ void block_lanczos(const MatrixType& A,
             if( j > 0 )
             {
                 timer gemm_timer;
-                detail::SimpleGEMM(X_drag, TE_start, X_stop, CUBLAS_OP_N, CUBLAS_OP_T, ValueType(-1), ValueType(1));
+                // detail::SimpleGEMM(X_drag, TE_start, X_stop, CUBLAS_OP_N, CUBLAS_OP_T, ValueType(-1), ValueType(1));
+                detail::gemm_t(cublas_handle, TE_start, X_drag, X_stop, CUBLAS_OP_T, CUBLAS_OP_N, ValueType(-1), ValueType(1));
                 gemm1_time += gemm_timer.milliseconds_elapsed();
             }
 
@@ -433,13 +493,12 @@ void block_lanczos(const MatrixType& A,
             ortho_time += ortho_timer.milliseconds_elapsed();
 
             timer multiply_timer;
-            cusp::copy(X_stop, temp1);
-            cusp::multiply(A, temp1, temp2);
-            cusp::copy(temp2, AX);
+            cusp::multiply(A, X_stop, AX);
             multiply_time += multiply_timer.milliseconds_elapsed();
 
             timer gemm2_timer;
-            detail::gemm(cublas_handle, X_stop, AX, TD_stop, CUBLAS_OP_T, CUBLAS_OP_N);
+            // detail::gemm(cublas_handle, X_stop, AX, TD_stop, CUBLAS_OP_T, CUBLAS_OP_N);
+            detail::gemm_t(cublas_handle, X_stop, AX, TD_stop, CUBLAS_OP_N, CUBLAS_OP_T);
             gemm2_time += gemm2_timer.milliseconds_elapsed();
         }
         std::cout << " Inner loop time : " << inner_loop_timer.milliseconds_elapsed() << " (ms)." << std::endl;
@@ -471,10 +530,9 @@ void block_lanczos(const MatrixType& A,
         }
         std::cout << " Eigensolver (SYEV) time : " << syev_timer.milliseconds_elapsed() << " (ms)." << std::endl;
 
-        V = T_h;
-
         timer vector_timer;
-        detail::gemv(cublas_handle, X, V.column(0), Evects.column(0));
+        cusp::copy(T_h, V);
+        detail::gemv_t(cublas_handle, X, V.column(0), Evects.column(0));
         std::cout << " Eigensolver (VECTOR) time : " << vector_timer.milliseconds_elapsed() << " (ms)." << std::endl;
     }
 
