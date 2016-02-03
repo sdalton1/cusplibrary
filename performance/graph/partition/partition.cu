@@ -102,7 +102,7 @@ int main(int argc, char*argv[])
     size_t M = A.num_entries;
     size_t blocksize = 4;
     size_t maxouter  = 1;
-    size_t maxinner  = 10;
+    size_t maxinner  = 40;
     std::cout << "with shape ("  << N << "," << N << ") and " << M << " entries" << "\n\n";
 
     cusp::array1d<ValueType, MemorySpace> eigVals(1);

@@ -9,10 +9,10 @@ except:
   exec open("../../../build/build-env.py")
   env = Environment()
 
-# lapack_dir = os.environ["HOME"] + "/.local"
-# env.Append(CPPPATH = lapack_dir + "/include")
-# env.Append(LIBPATH = lapack_dir + "/lib")
-# env.Append(LIBS = ["stdc++", "cublas", "openblas"])
+lapack_dir = os.environ["HOME"] + "/.local"
+env.Append(CPPPATH = lapack_dir + "/include")
+env.Append(LIBPATH = lapack_dir + "/lib")
+env.Append(LIBS = ["stdc++", "cublas", "openblas"])
 
 # find all .cus & .cpps in the current directory
 sources = []

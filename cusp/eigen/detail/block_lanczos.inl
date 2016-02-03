@@ -463,7 +463,6 @@ void block_lanczos(const MatrixType& A,
         std::cout << " Eigensolver (INIT) time : " << eigen_init_timer.milliseconds_elapsed() << " (ms)." << std::endl;
 
         timer syev_timer;
-        detail::syev(s, T_hp, eigvals_p);
         int info = detail::syev(s, T_hp, eigvals_p);
         if(info != 0)
         {
