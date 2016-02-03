@@ -111,15 +111,15 @@ void axpy(const ArrayType1& x,
 }
 
 template <typename ArrayType1,
-          typename Iterator,
+          typename RandomAccessIterator,
           typename ScalarType>
 void axpy(const ArrayType1& x,
-          const cusp::array1d_view<Iterator>& y,
+                cusp::array1d_view<RandomAccessIterator> y,
           const ScalarType alpha)
 {
     using thrust::system::detail::generic::select_system;
 
-    typedef cusp::array1d_view<Iterator> ArrayType2;
+    typedef cusp::array1d_view<RandomAccessIterator> ArrayType2;
     typedef typename ArrayType1::memory_space System1;
     typedef typename ArrayType2::memory_space System2;
 
@@ -502,18 +502,19 @@ void scal(ArrayType& x,
     cusp::blas::scal(select_system(system), x, alpha);
 }
 
-template <typename Iterator,
+template <typename RandomAccessIterator,
           typename ScalarType>
-void scal(const cusp::array1d_view<Iterator>& x,
+void scal(cusp::array1d_view<RandomAccessIterator> x,
           const ScalarType alpha)
 {
-    // using thrust::system::detail::generic::select_system;
-    //
-    // typedef typename Iterator::memory_space System;
-    //
-    // System system;
-    //
-    // cusp::blas::scal(select_system(system), x, alpha);
+    using thrust::system::detail::generic::select_system;
+
+    typedef cusp::array1d_view<RandomAccessIterator> ArrayType;
+    typedef typename ArrayType::memory_space System;
+
+    System system;
+
+    cusp::blas::scal(select_system(system), x, alpha);
 }
 
 template <typename DerivedPolicy,
