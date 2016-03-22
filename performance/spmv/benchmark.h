@@ -57,8 +57,11 @@ float check_block_spmv(HostMatrix& host_matrix, TestMatrix& test_matrix, TestKer
     const IndexType N = host_matrix.num_cols;
 
     // create host input (x) and output (y) vectors
-    cusp::array2d<ValueType,cusp::host_memory> host_x(N, num_cols, 1);
+    cusp::array2d<ValueType,cusp::host_memory> host_x(N, num_cols);
     cusp::array2d<ValueType,cusp::host_memory> host_y(M, num_cols, 0);
+
+    // initialize host_x to random array
+    cusp::copy(cusp::random_array<ValueType>(host_x.values.size()), host_x.values);
 
     // create test input (x) and output (y) vectors
     cusp::array2d<ValueType, MemorySpace> test_x(host_x);
