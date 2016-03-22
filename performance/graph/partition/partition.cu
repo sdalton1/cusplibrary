@@ -24,11 +24,14 @@ struct partition_stats
 {
     float initial_guess_time;
     float bisect_time;
+    float cut_time;
     float imbalance;
     int   num_edge_cuts;
     int   min_edge_cuts;
     int   max_edge_cuts;
     int   avg_edge_cuts;
+    int   num_comps;
+    int   max_part_size;
 };
 
 struct partition_config
@@ -71,38 +74,46 @@ std::string process_args(int argc, char ** argv)
 template<typename MatrixType, typename Array2dColumn>
 void generate_initial_guess(const MatrixType& A, Array2dColumn& Q)
 {
+    using namespace thrust::placeholders;
+    typedef typename MatrixType::index_type   IndexType;
     typedef typename MatrixType::value_type   ValueType;
     typedef typename MatrixType::memory_space MemorySpace;
 
-    int blocksize = Q.num_cols;
+    cusp::array1d<IndexType,MemorySpace> A_row_lengths(A.num_rows);
+    thrust::transform(A.row_offsets.begin() + 1, A.row_offsets.end(),
+                      A.row_offsets.begin(), A_row_lengths.begin(),
+                      thrust::minus<IndexType>());
 
-    cusp::array1d<int,MemorySpace> x(A.num_rows);
-    cusp::graph::pseudo_peripheral_vertex(A, x);
-    cusp::blas::copy(x, Q.column(0));
+    cusp::array1d<IndexType,MemorySpace> level_x(A.num_rows);
+    IndexType vertex = cusp::graph::pseudo_peripheral_vertex(A, level_x);
+    IndexType last_vertex = thrust::find(level_x.begin(), level_x.end(), 0) - level_x.begin();
+    /* IndexType min_level = *thrust::min_element(level_x.begin(), level_x.end()); */
+    /* std::cout << "max_level : " << max_level << std::endl; */
+    /* size_t num_max_level = thrust::count(level_x.begin(), level_x.end(), max_level); */
+    /* std::cout << "num_max_level : " << num_max_level << std::endl; */
+    /*  */
+    /* cusp::array1d<IndexType,MemorySpace> last_nodes(num_max_level); */
+    /* thrust::copy_if(thrust::counting_iterator<int>(0), thrust::counting_iterator<int>(A.num_rows), */
+    /*                 level_x.begin(), last_nodes.begin(), _1 == max_level); */
+    /* std::cout << "last_nodes" << std::endl; */
+    /* cusp::print(last_nodes); */
+    /* IndexType last_vertex = last_nodes[thrust::min_element(thrust::make_permutation_iterator(A_row_lengths.begin(), last_nodes.begin()), */
+    /*                                                        thrust::make_permutation_iterator(A_row_lengths.begin(), last_nodes.begin()) + num_max_level) */
+    /*                                                      - thrust::make_permutation_iterator(A_row_lengths.begin(), last_nodes.begin())]; */
+    /* printf("vertices (%d, %d)\n", vertex, last_vertex); */
 
-    for(int i = 1; i < blocksize; i++)
+    cusp::array1d<IndexType,MemorySpace> level_y(A.num_rows);
+    cusp::graph::breadth_first_search(A, last_vertex, level_y);
+
+    cusp::blas::copy(level_x, Q.column(0));
+    cusp::blas::copy(level_y, Q.column(1));
+
+    for(int i = 2; i < Q.num_cols; i++)
     {
-        int vertex = rand() % A.num_rows;
-        cusp::graph::breadth_first_search(A, vertex, x);
-        cusp::blas::copy(x, Q.column(i));
+        vertex = rand() % A.num_rows;
+        cusp::graph::breadth_first_search(A, vertex, level_x);
+        cusp::blas::copy(level_x, Q.column(i));
     }
-
-    cusp::array2d<ValueType,cusp::host_memory> R(blocksize,blocksize,0);
-    cusp::eigen::detail::modifiedGramSchmidt(Q, R);
-
-    /*cusp::print(R);*/
-
-    /*size_t N = A.num_rows;*/
-    /*timer cut_timer;*/
-    /*cusp::array1d<ValueType,MemorySpace> fiedler(Q.column(0));*/
-    /*cusp::array1d<ValueType,MemorySpace> partition(N);*/
-    /*thrust::sort(fiedler.begin(), fiedler.end());*/
-    /*ValueType vmed = fiedler[N/2];*/
-    /*thrust::transform(Q.column(0).begin(), Q.column(0).end(),*/
-    /*                  thrust::constant_iterator<ValueType>(vmed),*/
-    /*                  partition.begin(), thrust::greater_equal<ValueType>());*/
-    /*analyze(A, partition);*/
-    /*std::cout << " Cut time : " << cut_timer.milliseconds_elapsed() << " (ms)." << std::endl;*/
 }
 
 template<typename MatrixType, typename ArrayType>
@@ -136,14 +147,16 @@ void analyze(const MatrixType& G, const ArrayType& P, partition_stats& stats, bo
     cusp::csr_matrix<IndexType,ValueType,cusp::host_memory> G_host(A);
 
     cusp::array1d<IndexType,cusp::host_memory> components(N);
-    size_t num_comp = cusp::graph::connected_components(G_host, components);
+    size_t num_comps = cusp::graph::connected_components(G_host, components);
+    stats.num_comps = num_comps;
 
-    cusp::array1d<IndexType,cusp::host_memory> component_sizes(num_comp);
+    cusp::array1d<IndexType,cusp::host_memory> component_sizes(num_comps);
     thrust::sort(components.begin(), components.end());
     thrust::reduce_by_key(components.begin(), components.end(), thrust::constant_iterator<int>(1),
                           thrust::make_discard_iterator(), component_sizes.begin());
-    if(verbose) std::cout << "Partition yielded " << num_comp << " components" << std::endl;
-    /*cusp::print(component_sizes);*/
+
+    if(verbose)
+        cusp::print(component_sizes);
 
     cusp::array1d<IndexType,MemorySpace> part_sizes(num_parts, 0);
     thrust::sort(partition.begin(), partition.end());
@@ -164,6 +177,7 @@ void analyze(const MatrixType& G, const ArrayType& P, partition_stats& stats, bo
 
     stats.imbalance = imbalance;
     stats.num_edge_cuts = num_edge_cuts;
+    stats.max_part_size = *thrust::max_element(part_sizes.begin(), part_sizes.end());
 }
 
 template<typename MatrixType>
@@ -178,7 +192,7 @@ void run_tests(const MatrixType& A, const partition_config& config, partition_st
 
     // initialize starting vector to random values in [0,1)
     cusp::array2d<ValueType,MemorySpace,cusp::column_major> X0(N,config.blocksize);
-    cusp::blas::copy(cusp::random_array<ValueType>(X0.num_entries), X0.values);
+    /* cusp::blas::copy(cusp::random_array<ValueType>(X0.num_entries), X0.values); */
 
     timer initial_guess_timer;
     generate_initial_guess(A, X0);
@@ -190,92 +204,68 @@ void run_tests(const MatrixType& A, const partition_config& config, partition_st
 
     if(cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
     {
-      throw cusp::runtime_exception("cublasCreate failed");
+        throw cusp::runtime_exception("cublasCreate failed");
     }
     cusp::cublas::execution_policy cublas(handle);
 
     cusp::array1d<ValueType, MemorySpace> eigVals(config.blocksize);
-    cusp::array2d<ValueType, MemorySpace> eigVecs(N, config.blocksize);
+    cusp::array2d<ValueType, MemorySpace, cusp::column_major> eigVecs(N, config.blocksize);
 
     timer bisect_timer;
-    cusp::eigen::block_lanczos(cublas, A, eigVals, eigVecs, config.blocksize, config.maxouter, config.maxinner, config.verbose);
+    cusp::eigen::block_lanczos(cublas, A, X0, eigVals, eigVecs,
+                               config.blocksize, config.maxouter,
+                               config.maxinner, config.verbose);
     stats.bisect_time = bisect_timer.milliseconds_elapsed();
     if(config.verbose)
         std::cout << " Bisect time : " << stats.bisect_time << " (ms)." << std::endl;
 
+    timer cut_timer;
+    cusp::array1d<ValueType,MemorySpace> fiedler(eigVecs.column(0));
+    thrust::sort(fiedler.begin(), fiedler.end());
+    ValueType vmed = fiedler[N/2];
+    thrust::transform(eigVecs.column(0).begin(), eigVecs.column(0).end(),
+                      thrust::constant_iterator<ValueType>(vmed),
+                      partition.begin(), thrust::greater_equal<ValueType>());
+    stats.cut_time = cut_timer.milliseconds_elapsed();
+
     analyze(A, partition, stats, config.verbose);
 }
 
-/* int main(int argc, char*argv[]) */
-/* { */
-/*     typedef int IndexType; */
-/*     typedef float ValueType; */
-/*     typedef cusp::device_memory MemorySpace; */
-/*  */
-/*     size_t size = 4; */
-/*     cusp::csr_matrix<IndexType, ValueType, cusp::host_memory> A; */
-/*  */
-/*     if (argc == 1) */
-/*     { */
-/*         // no input file was specified, generate an example */
-/*         std::cout << "Generated matrix (poisson5pt) "; */
-/*         cusp::gallery::poisson5pt(A, size, size); */
-/*  */
-/*         for(size_t i = 0; i < A.num_rows; i++) */
-/*             for(IndexType j = A.row_offsets[i]; j < A.row_offsets[i + 1]; j++) */
-/*                 if(IndexType(i) == A.column_indices[j]) */
-/*                     A.values[j] = A.row_offsets[i + 1] - A.row_offsets[i] - 1; */
-/*                 else */
-/*                     A.values[j] = -1; */
-/*     } */
-/*     else if (argc == 2) */
-/*     { */
-/*         // an input file was specified, read it from disk */
-/*         cusp::io::read_matrix_market_file(A, argv[1]); */
-/*         std::cout << "Read matrix (" << argv[1] << ") "; */
-/*     } */
-/*  */
-/*     size_t N = A.num_rows; */
-/*     size_t M = A.num_entries; */
-/*     size_t blocksize = 4; */
-/*     size_t maxouter  = 1; */
-/*     size_t maxinner  = 10; */
-/*     std::cout << "with shape ("  << N << "," << N << ") and " << M << " entries" << "\n\n"; */
-/*  */
-/*     cusp::array1d<ValueType, MemorySpace> eigVals(1); */
-/*     cusp::array2d<ValueType, MemorySpace> eigVecs(N, 1); */
-/*  */
-/*     // initialize starting vector to random values in [0,1) */
-/*     cusp::array2d<ValueType,MemorySpace,cusp::column_major> X0(N, 4); */
-/*     cusp::blas::copy(cusp::random_array<ValueType>(X0.num_entries), X0.values); */
-/*  */
-/*     cusp::csr_matrix<IndexType, ValueType, MemorySpace> A_d(A); */
-/*  */
-/*     cublasHandle_t handle; */
-/*  */
-/*     if(cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS) */
-/*     { */
-/*       throw cusp::runtime_exception("cublasCreate failed"); */
-/*     } */
-/*     cusp::cublas::execution_policy cublas(handle); */
-/*  */
-/*     timer t; */
-/*     cusp::eigen::block_lanczos(cublas, A_d, eigVals, eigVecs, blocksize, maxouter, maxinner); */
-/*     std::cout << " Bisect time : " << t.milliseconds_elapsed() << " (ms)." << std::endl; */
-/*  */
-/*     cusp::array1d<IndexType, MemorySpace> partition(N); */
-/*     analyze(A_d, partition); */
-/*  */
-/*     return EXIT_SUCCESS; */
-/* } */
+template<typename IndexType, typename ValueType, typename MemorySpace>
+void laplacian_transform(cusp::csr_matrix<IndexType,ValueType,MemorySpace>& A)
+{
+    cusp::blas::fill(A.values, -1);
+
+    cusp::array1d<IndexType,MemorySpace> A_row_lengths(A.num_rows);
+    thrust::transform(A.row_offsets.begin() + 1, A.row_offsets.end(),
+                      A.row_offsets.begin(), A_row_lengths.begin(),
+                      thrust::minus<IndexType>());
+    cusp::blas::axpy(cusp::constant_array<IndexType>(A.num_rows, 1),
+                     A_row_lengths, -1);
+
+    cusp::array1d<IndexType,MemorySpace> A_row_indices(A.num_entries);
+    cusp::offsets_to_indices(A.row_offsets, A_row_indices);
+
+    cusp::array1d<IndexType,MemorySpace> diagonal_indices(A.num_rows);
+    thrust::scatter_if(thrust::counting_iterator<IndexType>(0),
+                       thrust::counting_iterator<IndexType>(A.num_entries),
+                       A_row_indices.begin(),
+                       thrust::make_transform_iterator(
+                           thrust::make_zip_iterator(
+                               thrust::make_tuple(A_row_indices.begin(), A.column_indices.begin())),
+                           cusp::equal_pair_functor<IndexType>()),
+                       diagonal_indices.begin());
+
+    thrust::copy(A_row_lengths.begin(), A_row_lengths.end(),
+                 thrust::make_permutation_iterator(A.values.begin(), diagonal_indices.begin()));
+}
 
 int main(int argc, char*argv[])
 {
     typedef int                 IndexType;
-    typedef float               ValueType;
+    typedef double              ValueType;
     typedef cusp::device_memory MemorySpace;
 
-    size_t size = 10;
     cusp::csr_matrix<IndexType, ValueType, MemorySpace> A;
     srand(time(NULL));
 
@@ -283,6 +273,7 @@ int main(int argc, char*argv[])
 
     if (filename.empty())
     {
+        const size_t size = 5;
         cusp::gallery::poisson5pt(A, size, size);
     }
     else
@@ -292,6 +283,8 @@ int main(int argc, char*argv[])
         std::cout << "Read matrix (" << filename << ") ";
     }
 
+    laplacian_transform(A);
+
     size_t N = A.num_rows;
     size_t M = A.num_entries;
     std::cout << "with shape ("  << N << "," << N << ") and " << M << " entries" << "\n";
@@ -299,45 +292,56 @@ int main(int argc, char*argv[])
     partition_stats base_stats;
     base_stats.initial_guess_time = 0;
     base_stats.bisect_time = 0;
+    base_stats.cut_time = 0;
     base_stats.imbalance = 0;
     base_stats.min_edge_cuts = INT_MAX;
     base_stats.max_edge_cuts = 0;
     base_stats.avg_edge_cuts = 0;
     base_stats.num_edge_cuts = 0;
+    base_stats.num_comps = 0;
+    base_stats.max_part_size = 0;
 
     partition_config config;
-    int num_iterations = args.count("numiter") ? atoi(args["numiter"].c_str())   : 10;
-    config.blocksize = args.count("blocksize") ? atoi(args["blocksize"].c_str()) : 4;
-    config.maxinner  = args.count("maxinner")  ? atoi(args["maxinner"].c_str())  : 10;
-    config.maxouter  = args.count("maxouter")  ? atoi(args["maxouter"].c_str())  : 1;
-    config.verbose   = args.count("v")  ? true  : false;
+    size_t num_iterations = args.count("numiter")   ? atoi(args["numiter"].c_str())   : 10;
+    config.blocksize      = args.count("blocksize") ? atoi(args["blocksize"].c_str()) : 4;
+    config.maxinner       = args.count("maxinner")  ? atoi(args["maxinner"].c_str())  : 10;
+    config.maxouter       = args.count("maxouter")  ? atoi(args["maxouter"].c_str())  : 1;
+    config.verbose        = args.count("v")         ? true  : false;
 
     std::vector<partition_stats> stats_array(num_iterations);
-    for(int i = 0; i < num_iterations; i++)
+    for(size_t i = 0; i < num_iterations; i++)
     {
         run_tests(A, config, stats_array[i]);
 
         base_stats.initial_guess_time += stats_array[i].initial_guess_time;
         base_stats.bisect_time        += stats_array[i].bisect_time;
+        base_stats.cut_time           += stats_array[i].cut_time;
         base_stats.imbalance          += stats_array[i].imbalance;
         base_stats.num_edge_cuts      += stats_array[i].num_edge_cuts;
         base_stats.min_edge_cuts      =  min(base_stats.min_edge_cuts, stats_array[i].num_edge_cuts);
         base_stats.max_edge_cuts      =  max(base_stats.max_edge_cuts, stats_array[i].num_edge_cuts);
+        base_stats.num_comps          =  max(base_stats.num_comps, stats_array[i].num_comps);
+        base_stats.max_part_size      =  max(base_stats.max_part_size, stats_array[i].max_part_size);
     }
 
     base_stats.initial_guess_time /= num_iterations;
     base_stats.bisect_time        /= num_iterations;
+    base_stats.cut_time           /= num_iterations;
     base_stats.imbalance          /= num_iterations;
-    base_stats.avg_edge_cuts      =  base_stats.num_edge_cuts / num_iterations;
+    base_stats.avg_edge_cuts       =  base_stats.num_edge_cuts / num_iterations;
 
-    printf("blocksize=%lu\n", config.blocksize);
-    printf("maxinner=%lu\n", config.maxinner);
+    printf("blocksize=%lu\n",            config.blocksize);
+    printf("maxinner=%lu\n",             config.maxinner);
+
     printf("initial_guess_time=%4.2f\n", base_stats.initial_guess_time);
-    printf("bisect_time=%4.2f\n", base_stats.bisect_time);
-    printf("total_time=%4.2f\n", base_stats.initial_guess_time + base_stats.bisect_time);
-    printf("min_edge_cuts=%d\n", base_stats.min_edge_cuts);
-    printf("max_edge_cuts=%d\n", base_stats.max_edge_cuts);
-    printf("avg_edge_cuts=%d\n", base_stats.avg_edge_cuts);
+    printf("bisect_time=%4.2f\n",        base_stats.bisect_time);
+    printf("cut_time=%4.2f\n",           base_stats.cut_time);
+    printf("total_time=%4.2f\n",         base_stats.initial_guess_time + base_stats.bisect_time);
+    printf("min_edge_cuts=%d\n",         base_stats.min_edge_cuts);
+    printf("max_edge_cuts=%d\n",         base_stats.max_edge_cuts);
+    printf("avg_edge_cuts=%d\n",         base_stats.avg_edge_cuts);
+    printf("num_comps=%d\n",             base_stats.num_comps);
+    printf("max_part_size=%d\n",         base_stats.max_part_size);
 
     return EXIT_SUCCESS;
 }

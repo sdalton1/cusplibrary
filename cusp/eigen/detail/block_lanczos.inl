@@ -395,6 +395,7 @@ template<typename MatrixType,
          typename Array2d>
 void block_lanczos(cusp::blas::cublas::execution_policy& exec,
                    const MatrixType& A,
+                   const Array2d& X0,
                    Array1d& eigVals,
                    Array2d& eigVecs,
                    const size_t blocksize,
@@ -439,8 +440,9 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
 
     // initialize starting vector to random values in [0,1)
     MemArray2dRowView X_start(N, blocksize, blocksize, cusp::make_array1d_view(X.values));
-    cusp::blas::copy(cusp::random_array<ValueType>(X_start.num_entries),
-                     X_start.values.subarray(0, X_start.num_entries));
+    // cusp::blas::copy(cusp::random_array<ValueType>(X_start.num_entries),
+    //                  X_start.values.subarray(0, X_start.num_entries));
+    cusp::copy(X0, X_start);
 
     // normalize v0
     cusp::constant_array<ValueType> ones(N, ValueType(1) / std::sqrt(N));
@@ -546,16 +548,21 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
 
         timer eigen_vect_timer;
         cusp::copy(T_h, V);
-        // detail::gemv_t(exec.get_handle(), X, V.column(0), Evects.column(0));
         detail::gemm_t(exec.get_handle(), X, V, Evects);
         eigen_vect_time += eigen_vect_timer.milliseconds_elapsed();
+
+        for(size_t i = 0; i < eigVecs.num_cols; i++)
+            cusp::blas::copy(Evects.column(i), AX.column(i));
     }
 
-    printf("Total time : %4.4f (ms)\n", all_timer.milliseconds_elapsed());
+    cusp::copy(AX, eigVecs);
 
-    // if(verbose)
+    if(verbose)
     {
-        cusp::print(eigvals.subarray(0,blocksize));
+        printf("Total time : %4.4f (ms)\n", all_timer.milliseconds_elapsed());
+
+        // cusp::print(eigvals.subarray(0,blocksize));
+        cusp::print(eigvals);
 
         std::cout << " Initialization time : " << initial_time << " (ms)." << std::endl;
         std::cout << " Inner loop time : " << inner_loop_time << " (ms)." << std::endl;
