@@ -77,7 +77,7 @@ __global__ void SimpleGEMMKernel(const ValueType alpha, const ValueType beta,
         storage.data[threadIdx.x] = B[threadIdx.x];
 
     if(thread_id < m) {
-        #pragma unroll
+#pragma unroll
         for(int i = 0; i < K; i++)
             vals[i] = A[i*lda + thread_id];
     }
@@ -86,14 +86,14 @@ __global__ void SimpleGEMMKernel(const ValueType alpha, const ValueType beta,
 
     if(thread_id < m)
     {
-        #pragma unroll
+#pragma unroll
         for(int i = 0; i < K; i++)
         {
             ValueType sum = 0;
 
             if(beta == 0)
             {
-                #pragma unroll
+#pragma unroll
                 for(int j = 0; j < K; j++)
                     sum += vals[j]*storage.data[i*K+j];
 
@@ -101,7 +101,7 @@ __global__ void SimpleGEMMKernel(const ValueType alpha, const ValueType beta,
             }
             else
             {
-                #pragma unroll
+#pragma unroll
                 for(int j = 0; j < K; j++)
                     sum += vals[j]*storage.data[j*K+i];
 
@@ -134,32 +134,32 @@ void SimpleGEMM(const Array2d& A, const Array2d& B, Array2d& C,
 
     switch(k)
     {
-        case 1:
-            SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 1><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
-                    A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
-            break;
-        case 2:
-            SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 2><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
-                    A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
-            break;
-        case 4:
-            SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 4><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
-                    A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
-            break;
-        case 8:
-            SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 8><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
-                    A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
-            break;
-        case 16:
-            SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 16><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
-                    A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
-            break;
-        case 32:
-            SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 32><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
-                    A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
-            break;
-        default :
-            throw cusp::runtime_exception("Unsupported number of columns!");
+    case 1:
+        SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 1><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
+                A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
+        break;
+    case 2:
+        SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 2><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
+                A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
+        break;
+    case 4:
+        SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 4><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
+                A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
+        break;
+    case 8:
+        SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 8><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
+                A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
+        break;
+    case 16:
+        SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 16><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
+                A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
+        break;
+    case 32:
+        SimpleGEMMKernel<ValueType, THREADS_PER_BLOCK, 32><<<NUM_BLOCKS,THREADS_PER_BLOCK>>>(alpha,beta,m,n,k,lda,
+                A_values,B_values,C_values,transa==CUBLAS_OP_N,transb==CUBLAS_OP_N);
+        break;
+    default :
+        throw cusp::runtime_exception("Unsupported number of columns!");
     }
     gpuErrchk(cudaDeviceSynchronize());
 }
@@ -240,9 +240,9 @@ void gemv(cublasHandle_t& cublas_handle,
 
 template<typename Array2d1, typename Array1d1, typename Array1d2>
 void gemv_t(cublasHandle_t& cublas_handle,
-          const Array2d1& A,
-          const Array1d1& x,
-          const Array1d2& y)
+            const Array2d1& A,
+            const Array1d1& x,
+            const Array1d2& y)
 {
     typedef typename Array2d1::value_type ValueType;
 
@@ -301,13 +301,13 @@ void gemm(cublasHandle_t& cublas_handle,
 
 template<typename Array2d1, typename Array2d2, typename Array2d3>
 void gemm_t(cublasHandle_t& cublas_handle,
-          const Array2d1& A,
-          const Array2d2& B,
-          Array2d3& C,
-          cublasOperation_t transa = CUBLAS_OP_N,
-          cublasOperation_t transb = CUBLAS_OP_N,
-          typename Array2d1::value_type alpha = 1,
-          typename Array2d1::value_type beta  = 0)
+            const Array2d1& A,
+            const Array2d2& B,
+            Array2d3& C,
+            cublasOperation_t transa = CUBLAS_OP_N,
+            cublasOperation_t transb = CUBLAS_OP_N,
+            typename Array2d1::value_type alpha = 1,
+            typename Array2d1::value_type beta  = 0)
 {
     typedef typename Array2d1::value_type ValueType;
 
@@ -384,8 +384,26 @@ void block_lanczos(const MatrixType& A,
                    Array2d& eigVecs,
                    const size_t blocksize,
                    const size_t maxouter,
-                   const size_t maxinner_)
+                   const size_t maxinner_,
+                   const bool verbose)
 {
+    throw cusp::runtime_exception("block_lanczos only implemented on GPU");
+}
+
+template<typename MatrixType,
+         typename Array1d,
+         typename Array2d>
+void block_lanczos(cusp::blas::cublas::execution_policy& exec,
+                   const MatrixType& A,
+                   Array1d& eigVals,
+                   Array2d& eigVecs,
+                   const size_t blocksize,
+                   const size_t maxouter,
+                   const size_t maxinner_,
+                   const bool verbose = false)
+{
+    timer all_timer;
+
     typedef typename MatrixType::value_type   ValueType;
     typedef typename MatrixType::memory_space MemorySpace;
 
@@ -402,11 +420,6 @@ void block_lanczos(const MatrixType& A,
     const size_t St = blocksize * blocksize;
     const size_t Sx = N * blocksize;
     const size_t s  = (maxinner + 1) * blocksize;
-
-    cublasHandle_t cublas_handle;
-
-    if(cublasCreate(&cublas_handle) != CUBLAS_STATUS_SUCCESS)
-        throw cusp::runtime_exception("cublasCreate failed");
 
     timer initial_timer;
     MemArray2dRow AX(N,blocksize);
@@ -435,7 +448,12 @@ void block_lanczos(const MatrixType& A,
 
     MemArray2dRowView TD_start(blocksize, blocksize, blocksize, cusp::make_array1d_view(TD));
     detail::modifiedGramSchmidt(X_start, TD_start);
-    std::cout << " Initialization time : " << initial_timer.milliseconds_elapsed() << " (ms)." << std::endl;
+    float initial_time = initial_timer.milliseconds_elapsed();
+
+    float inner_loop_time = 0;
+    float eigen_init_time = 0;
+    float eigen_syev_time = 0;
+    float eigen_vect_time = 0;
 
     float multiply_time = 0;
     float gemm1_time = 0;
@@ -449,8 +467,7 @@ void block_lanczos(const MatrixType& A,
         multiply_time += multiply_timer.milliseconds_elapsed();
 
         timer gemm_timer;
-        // detail::gemm(cublas_handle, X_start, AX, TD_start, CUBLAS_OP_T, CUBLAS_OP_N);
-        detail::gemm_t(cublas_handle, X_start, AX, TD_start, CUBLAS_OP_N, CUBLAS_OP_T);
+        detail::gemm_t(exec.get_handle(), X_start, AX, TD_start, CUBLAS_OP_N, CUBLAS_OP_T);
         gemm2_time += gemm_timer.milliseconds_elapsed();
 
         timer inner_loop_timer;
@@ -474,8 +491,7 @@ void block_lanczos(const MatrixType& A,
             MemArray2dRowView TE_stop (blocksize, blocksize, blocksize, TE.subarray(tstop,St));
 
             timer gemm1_timer;
-            // detail::SimpleGEMM(X_start, TD_start, X_stop);
-            detail::gemm_t(cublas_handle, TD_start, X_start, X_stop, CUBLAS_OP_N, CUBLAS_OP_N);
+            detail::gemm_t(exec.get_handle(), TD_start, X_start, X_stop, CUBLAS_OP_N, CUBLAS_OP_N);
             gemm1_time += gemm1_timer.milliseconds_elapsed();
 
             cusp::blas::axpby(AX.values, X_stop.values, X_stop.values, ValueType(1), ValueType(-1));
@@ -483,8 +499,7 @@ void block_lanczos(const MatrixType& A,
             if( j > 0 )
             {
                 timer gemm_timer;
-                // detail::SimpleGEMM(X_drag, TE_start, X_stop, CUBLAS_OP_N, CUBLAS_OP_T, ValueType(-1), ValueType(1));
-                detail::gemm_t(cublas_handle, TE_start, X_drag, X_stop, CUBLAS_OP_T, CUBLAS_OP_N, ValueType(-1), ValueType(1));
+                detail::gemm_t(exec.get_handle(), TE_start, X_drag, X_stop, CUBLAS_OP_T, CUBLAS_OP_N, ValueType(-1), ValueType(1));
                 gemm1_time += gemm_timer.milliseconds_elapsed();
             }
 
@@ -497,15 +512,14 @@ void block_lanczos(const MatrixType& A,
             multiply_time += multiply_timer.milliseconds_elapsed();
 
             timer gemm2_timer;
-            // detail::gemm(cublas_handle, X_stop, AX, TD_stop, CUBLAS_OP_T, CUBLAS_OP_N);
-            detail::gemm_t(cublas_handle, X_stop, AX, TD_stop, CUBLAS_OP_N, CUBLAS_OP_T);
+            detail::gemm_t(exec.get_handle(), X_stop, AX, TD_stop, CUBLAS_OP_N, CUBLAS_OP_T);
             gemm2_time += gemm2_timer.milliseconds_elapsed();
         }
-        std::cout << " Inner loop time : " << inner_loop_timer.milliseconds_elapsed() << " (ms)." << std::endl;
+        inner_loop_time += inner_loop_timer.milliseconds_elapsed();
 
         timer eigen_init_timer;
-        TD_h = TD;
-        TE_h = TE;
+        cusp::copy(TD, TD_h);
+        cusp::copy(TE, TE_h);
 
         for(int i = 0; i <= maxinner; i++)
         {
@@ -519,29 +533,41 @@ void block_lanczos(const MatrixType& A,
                 }
             }
         }
-        std::cout << " Eigensolver (INIT) time : " << eigen_init_timer.milliseconds_elapsed() << " (ms)." << std::endl;
+        eigen_init_time += eigen_init_timer.milliseconds_elapsed();
 
-        timer syev_timer;
+        timer eigen_syev_timer;
         int info = detail::syev(s, T_hp, eigvals_p);
         if(info != 0)
         {
             std::cerr << "syev failed with code : " << info << std::endl;
             exit(1);
         }
-        std::cout << " Eigensolver (SYEV) time : " << syev_timer.milliseconds_elapsed() << " (ms)." << std::endl;
+        eigen_syev_time += eigen_syev_timer.milliseconds_elapsed();
 
-        timer vector_timer;
+        timer eigen_vect_timer;
         cusp::copy(T_h, V);
-        detail::gemv_t(cublas_handle, X, V.column(0), Evects.column(0));
-        std::cout << " Eigensolver (VECTOR) time : " << vector_timer.milliseconds_elapsed() << " (ms)." << std::endl;
+        // detail::gemv_t(exec.get_handle(), X, V.column(0), Evects.column(0));
+        detail::gemm_t(exec.get_handle(), X, V, Evects);
+        eigen_vect_time += eigen_vect_timer.milliseconds_elapsed();
     }
 
-    cusp::print(eigvals.subarray(0,blocksize));
+    printf("Total time : %4.4f (ms)\n", all_timer.milliseconds_elapsed());
 
-    printf("Total SpMV    time : %4.4f (ms)\n", multiply_time);
-    printf("Total MGS     time : %4.4f (ms)\n", ortho_time);
-    printf("Total GEMM(1) time : %4.4f (ms)\n", gemm1_time);
-    printf("Total GEMM(2) time : %4.4f (ms)\n", gemm2_time);
+    // if(verbose)
+    {
+        cusp::print(eigvals.subarray(0,blocksize));
+
+        std::cout << " Initialization time : " << initial_time << " (ms)." << std::endl;
+        std::cout << " Inner loop time : " << inner_loop_time << " (ms)." << std::endl;
+        std::cout << " Eigensolver (INIT) time : " << eigen_init_time << " (ms)." << std::endl;
+        std::cout << " Eigensolver (SYEV) time : " << eigen_syev_time << " (ms)." << std::endl;
+        std::cout << " Eigensolver (VECT) time : " << eigen_vect_time << " (ms)." << std::endl;
+
+        printf("Total SpMV    time : %4.4f (ms)\n", multiply_time);
+        printf("Total MGS     time : %4.4f (ms)\n", ortho_time);
+        printf("Total GEMM(1) time : %4.4f (ms)\n", gemm1_time);
+        printf("Total GEMM(2) time : %4.4f (ms)\n", gemm2_time);
+    }
 }
 
 } // end namespace eigen
