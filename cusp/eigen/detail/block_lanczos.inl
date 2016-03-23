@@ -28,6 +28,7 @@
 #include <cusp/blas/blas.h>
 #include <cusp/blas/cublas/blas.h>
 
+// #include <cusp/eigen/detail/gram_schmidt.inl>
 #include <cusp/io/matrix_market.h>
 #include <cusp/iterator/random_iterator.h>
 
@@ -168,27 +169,54 @@ template<typename Array2d1, typename Array2d2>
 void modifiedGramSchmidt(Array2d1& Q, Array2d2& R, cusp::array2d_format, cusp::array2d_format)
 {
     typedef typename Array2d1::value_type ValueType;
-    typedef typename Array2d1::column_view ColumnView;
+    typedef typename Array2d1::container::rebind<cusp::host_memory>::type Array2d1Host;
 
-    for(size_t i = 0; i < Q.num_cols; i++)
-    {
-        ColumnView view = Q.column(i);
-        R(i,i) = cusp::blas::nrm2(view);
+    Array2d1Host Q_h(Q);
+    Array2d1Host R_h(R);
+    cusp::array1d<ValueType,cusp::host_memory> reflect(std::min(Q.num_rows, Q.num_cols));
 
-        if(R(i,i) < std::numeric_limits<ValueType>::epsilon())
-        {
-            std::cerr << "R(" << i << "," << i << ") = " << R(i,i) << std::endl;
-            throw cusp::runtime_exception("Gram-Schmidt orthogonalization failed.");
-        }
+    int m = Q_h.num_rows;
+    int n = Q_h.num_cols;
+    int lda = Q_h.pitch;
 
-        cusp::blas::scal(view, 1.0/R(i,i));
+    ValueType* a   = thrust::raw_pointer_cast(&Q_h(0,0));
+    ValueType* tau = thrust::raw_pointer_cast(&reflect[0]);
+    // std::cout << "computing dgeqrf" << std::endl;
+    assert(LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, m, n, a, lda, tau) == 0);
+    for(int i = 0; i < n; i++)
+        for(int j = i; j < n; j++)
+            R_h(i,j) = Q_h(i,j);
+    // std::cout << "computing dorgqr" << std::endl;
+    assert(LAPACKE_dorgqr(LAPACK_ROW_MAJOR, m, n, n, a, lda, tau) == 0);
 
-        for(size_t j = i + 1; j < Q.num_cols; j++)
-        {
-            R(i,j) = cusp::blas::dot(view, Q.column(j));
-            cusp::blas::axpy(view, Q.column(j), -R(i,j));
-        }
-    }
+    // std::cout << "computing results" << std::endl;
+    cusp::copy(Q_h, Q);
+    cusp::copy(R_h, R);
+    // std::cout << "done" << std::endl;
+
+    // typedef typename Array2d1::value_type ValueType;
+    // typedef typename Array2d1::column_view ColumnView;
+    //
+    // for(size_t i = 0; i < Q.num_cols; i++)
+    // {
+    //     // ColumnView view = Q.column(i);
+    //     R(i,i) = cusp::blas::nrm2(Q.column(i));
+    //
+    //     if(R(i,i) < std::numeric_limits<ValueType>::epsilon())
+    //     {
+    //         std::cerr << "R(" << i << "," << i << ") = " << R(i,i) << std::endl;
+    //         throw cusp::runtime_exception("Gram-Schmidt orthogonalization failed.");
+    //     }
+    //
+    //     // cusp::blas::scal(view, 1.0/R(i,i));
+    //     cusp::blas::scal(Q.column(i), 1.0/R(i,i));
+    //
+    //     for(size_t j = i + 1; j < Q.num_cols; j++)
+    //     {
+    //         R(i,j) = cusp::blas::dot(Q.column(i), Q.column(j));
+    //         cusp::blas::axpy(Q.column(i), Q.column(j), -R(i,j));
+    //     }
+    // }
 }
 
 template<typename Array2d1, typename Array2d2>
@@ -333,12 +361,14 @@ void gemm_t(cublasHandle_t& cublas_handle,
 
 int syev(const int s, float * T_hp, float * eigvals_p)
 {
-    return LAPACKE_ssyev(LAPACK_ROW_MAJOR, 'V', 'U', s, T_hp, s, eigvals_p);
+    // return LAPACKE_ssyevr(LAPACK_ROW_MAJOR, 'V', 'A', 'L', s, T_hp, s, 0, 0, 0, 0, eigvals_p);
+    return LAPACKE_ssyev(LAPACK_ROW_MAJOR, 'V', 'L', s, T_hp, s, eigvals_p);
 }
 
 int syev(const int s, double * T_hp, double * eigvals_p)
 {
-    return LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'V', 'U', s, T_hp, s, eigvals_p);
+    // return LAPACKE_dsyevr(LAPACK_ROW_MAJOR, 'V', 'A', 'L', s, T_hp, s, eigvals_p);
+    return LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'V', 'L', s, T_hp, s, eigvals_p);
 }
 
 } // end namespace detail
@@ -392,12 +422,13 @@ void block_lanczos(const MatrixType& A,
 
 template<typename MatrixType,
          typename Array1d,
-         typename Array2d>
+         typename Array2d1,
+         typename Array2d2>
 void block_lanczos(cusp::blas::cublas::execution_policy& exec,
                    const MatrixType& A,
-                   const Array2d& X0,
+                   const Array2d1& X0,
                    Array1d& eigVals,
-                   Array2d& eigVecs,
+                   Array2d2& eigVecs,
                    const size_t blocksize,
                    const size_t maxouter,
                    const size_t maxinner_,
@@ -423,16 +454,16 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
     const size_t s  = (maxinner + 1) * blocksize;
 
     timer initial_timer;
-    MemArray2dRow AX(N,blocksize);
-    MemArray2dRow X(N,s);
-    MemArray2dRow V(s,s);
-    MemArray2dRow Evects(N,s);
+    MemArray2dRow AX(N,blocksize,0);
+    MemArray2dRow X(N,s,0);
+    MemArray2dRow V(s,s,0);
+    MemArray2dRow Evects(N,s,0);
     MemArray1d TD(s*blocksize,0);
     MemArray1d TE(s*blocksize,0);
 
-    HostArray1d eigvals(s);
-    HostArray1d TD_h(s*blocksize);
-    HostArray1d TE_h(s*blocksize);
+    HostArray1d eigvals(s,0);
+    HostArray1d TD_h(s*blocksize,0);
+    HostArray1d TE_h(s*blocksize,0);
     HostArray2dRow T_h(s,s,0);
 
     ValueType *T_hp  = thrust::raw_pointer_cast(&T_h(0,0));
@@ -443,10 +474,6 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
     // cusp::blas::copy(cusp::random_array<ValueType>(X_start.num_entries),
     //                  X_start.values.subarray(0, X_start.num_entries));
     cusp::copy(X0, X_start);
-
-    // normalize v0
-    cusp::constant_array<ValueType> ones(N, ValueType(1) / std::sqrt(N));
-    detail::modifiedGramSchmidt(X_start, ones);
 
     MemArray2dRowView TD_start(blocksize, blocksize, blocksize, cusp::make_array1d_view(TD));
     detail::modifiedGramSchmidt(X_start, TD_start);
@@ -462,7 +489,7 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
     float gemm2_time = 0;
     float ortho_time = 0;
 
-    for(int i = 0; i < maxouter; i++)
+    for(size_t i = 0; i < maxouter; i++)
     {
         timer multiply_timer;
         cusp::multiply(A, X_start, AX);
@@ -473,7 +500,7 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
         gemm2_time += gemm_timer.milliseconds_elapsed();
 
         timer inner_loop_timer;
-        for(int j = 0; j < maxinner; j++)
+        for(size_t j = 0; j < maxinner; j++)
         {
             int xdrag = (j - 1) * Sx;
             int xstart= j * Sx;
@@ -508,6 +535,7 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
             timer ortho_timer;
             detail::modifiedGramSchmidt(X_stop, TE_stop);
             ortho_time += ortho_timer.milliseconds_elapsed();
+            cusp::print(TE_stop);
 
             timer multiply_timer;
             cusp::multiply(A, X_stop, AX);
@@ -523,19 +551,23 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
         cusp::copy(TD, TD_h);
         cusp::copy(TE, TE_h);
 
-        for(int i = 0; i <= maxinner; i++)
+        for(size_t i = 0; i <= maxinner; i++)
         {
-            for(int j = 0; j < blocksize; j++)
+            for(size_t j = 0; j < blocksize; j++)
             {
-                for(int k = j; k < blocksize; k++)
+                for(size_t k = 0; k < blocksize; k++)
                 {
-                    T_h(i*blocksize+j,i*blocksize+k) = TD_h[i*St + j*blocksize + k];
-                    if(i > 0)
-                        T_h((i-1)*blocksize+k,i*blocksize+j) = TE_h[i*St + k*blocksize + j];
+                    T_h( (i * blocksize) + j, (i * blocksize) + k ) = TD_h[i*St + j*blocksize + k];
+                    if(i < maxinner)
+                        T_h( ((i + 1) * blocksize) + j, (i  * blocksize) + k ) = TE_h[(i + 1)*St + j*blocksize + k];
+                    // if(i > 0)
+                        // T_h( ((i-1) * blocksize) + j, (i  * blocksize) + k ) = TE_h[i*St + j*blocksize + k];
+                        /* T_h((i-1)*blocksize+k,i*blocksize+j) = TE_h[i*St + k*blocksize + j]; */
                 }
             }
         }
         eigen_init_time += eigen_init_timer.milliseconds_elapsed();
+        cusp::print(T_h);
 
         timer eigen_syev_timer;
         int info = detail::syev(s, T_hp, eigvals_p);
@@ -548,14 +580,14 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
 
         timer eigen_vect_timer;
         cusp::copy(T_h, V);
-        detail::gemm_t(exec.get_handle(), X, V, Evects);
+        detail::gemm_t(exec.get_handle(), V, X, Evects);
         eigen_vect_time += eigen_vect_timer.milliseconds_elapsed();
 
-        for(size_t i = 0; i < eigVecs.num_cols; i++)
-            cusp::blas::copy(Evects.column(i), AX.column(i));
+        for(size_t j = 0; j < eigVecs.num_cols; j++)
+             cusp::blas::copy(Evects.column(j), X.column(j));
     }
 
-    cusp::copy(AX, eigVecs);
+    cusp::copy(X_start, eigVecs);
 
     if(verbose)
     {

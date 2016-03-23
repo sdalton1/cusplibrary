@@ -32,7 +32,7 @@ namespace print_detail
 template<typename T, typename Stream>
 void marshall(const T& val, Stream& s, bool newline = true)
 {
-    s << " "  << std::setw(14) << "(" << val << ")" << (newline ? "\n" : " ");
+    s << " "  << std::setprecision(4) << std::setw(8) << "(" << val << ")" << (newline ? "\n" : " ");
 }
 
 #if (THRUST_VERSION < 100802) || (THRUST_HOST_COMPILER == THRUST_HOST_COMPILER_MSVC)

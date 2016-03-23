@@ -87,20 +87,6 @@ void generate_initial_guess(const MatrixType& A, Array2dColumn& Q)
     cusp::array1d<IndexType,MemorySpace> level_x(A.num_rows);
     IndexType vertex = cusp::graph::pseudo_peripheral_vertex(A, level_x);
     IndexType last_vertex = thrust::find(level_x.begin(), level_x.end(), 0) - level_x.begin();
-    /* IndexType min_level = *thrust::min_element(level_x.begin(), level_x.end()); */
-    /* std::cout << "max_level : " << max_level << std::endl; */
-    /* size_t num_max_level = thrust::count(level_x.begin(), level_x.end(), max_level); */
-    /* std::cout << "num_max_level : " << num_max_level << std::endl; */
-    /*  */
-    /* cusp::array1d<IndexType,MemorySpace> last_nodes(num_max_level); */
-    /* thrust::copy_if(thrust::counting_iterator<int>(0), thrust::counting_iterator<int>(A.num_rows), */
-    /*                 level_x.begin(), last_nodes.begin(), _1 == max_level); */
-    /* std::cout << "last_nodes" << std::endl; */
-    /* cusp::print(last_nodes); */
-    /* IndexType last_vertex = last_nodes[thrust::min_element(thrust::make_permutation_iterator(A_row_lengths.begin(), last_nodes.begin()), */
-    /*                                                        thrust::make_permutation_iterator(A_row_lengths.begin(), last_nodes.begin()) + num_max_level) */
-    /*                                                      - thrust::make_permutation_iterator(A_row_lengths.begin(), last_nodes.begin())]; */
-    /* printf("vertices (%d, %d)\n", vertex, last_vertex); */
 
     cusp::array1d<IndexType,MemorySpace> level_y(A.num_rows);
     cusp::graph::breadth_first_search(A, last_vertex, level_y);
@@ -108,7 +94,7 @@ void generate_initial_guess(const MatrixType& A, Array2dColumn& Q)
     cusp::blas::copy(level_x, Q.column(0));
     cusp::blas::copy(level_y, Q.column(1));
 
-    for(int i = 2; i < Q.num_cols; i++)
+    for(size_t i = 2; i < Q.num_cols; i++)
     {
         vertex = rand() % A.num_rows;
         cusp::graph::breadth_first_search(A, vertex, level_x);
@@ -155,8 +141,8 @@ void analyze(const MatrixType& G, const ArrayType& P, partition_stats& stats, bo
     thrust::reduce_by_key(components.begin(), components.end(), thrust::constant_iterator<int>(1),
                           thrust::make_discard_iterator(), component_sizes.begin());
 
-    if(verbose)
-        cusp::print(component_sizes);
+    /* if(verbose) */
+    /*     cusp::print(component_sizes); */
 
     cusp::array1d<IndexType,MemorySpace> part_sizes(num_parts, 0);
     thrust::sort(partition.begin(), partition.end());
@@ -191,11 +177,14 @@ void run_tests(const MatrixType& A, const partition_config& config, partition_st
     cusp::array1d<IndexType, MemorySpace> partition(N);
 
     // initialize starting vector to random values in [0,1)
-    cusp::array2d<ValueType,MemorySpace,cusp::column_major> X0(N,config.blocksize);
+    cusp::array2d<ValueType,MemorySpace> X0(N,config.blocksize);
     /* cusp::blas::copy(cusp::random_array<ValueType>(X0.num_entries), X0.values); */
 
     timer initial_guess_timer;
     generate_initial_guess(A, X0);
+    // normalize X0
+    cusp::constant_array<ValueType> ones(A.num_rows, ValueType(1) / std::sqrt(A.num_rows));
+    cusp::eigen::detail::modifiedGramSchmidt(X0, ones);
     stats.initial_guess_time = initial_guess_timer.milliseconds_elapsed();
     if(config.verbose)
         std::cout << " Initial guess time : " << stats.initial_guess_time << " (ms)." << std::endl;
@@ -209,7 +198,7 @@ void run_tests(const MatrixType& A, const partition_config& config, partition_st
     cusp::cublas::execution_policy cublas(handle);
 
     cusp::array1d<ValueType, MemorySpace> eigVals(config.blocksize);
-    cusp::array2d<ValueType, MemorySpace, cusp::column_major> eigVecs(N, config.blocksize);
+    cusp::array2d<ValueType, MemorySpace> eigVecs(N, config.blocksize);
 
     timer bisect_timer;
     cusp::eigen::block_lanczos(cublas, A, X0, eigVals, eigVecs,
@@ -273,7 +262,7 @@ int main(int argc, char*argv[])
 
     if (filename.empty())
     {
-        const size_t size = 5;
+        const size_t size = 25;
         cusp::gallery::poisson5pt(A, size, size);
     }
     else
