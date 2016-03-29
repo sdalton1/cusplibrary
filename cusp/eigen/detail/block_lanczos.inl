@@ -560,9 +560,6 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
                     T_h( (i * blocksize) + j, (i * blocksize) + k ) = TD_h[i*St + j*blocksize + k];
                     if(i < maxinner)
                         T_h( ((i + 1) * blocksize) + j, (i  * blocksize) + k ) = TE_h[(i + 1)*St + j*blocksize + k];
-                    // if(i > 0)
-                        // T_h( ((i-1) * blocksize) + j, (i  * blocksize) + k ) = TE_h[i*St + j*blocksize + k];
-                        /* T_h((i-1)*blocksize+k,i*blocksize+j) = TE_h[i*St + k*blocksize + j]; */
                 }
             }
         }
@@ -580,14 +577,15 @@ void block_lanczos(cusp::blas::cublas::execution_policy& exec,
 
         timer eigen_vect_timer;
         cusp::copy(T_h, V);
-        detail::gemm_t(exec.get_handle(), V, X, Evects);
+        // detail::gemm_t(exec.get_handle(), V, X, Evects);
+        detail::gemm_t(exec.get_handle(), X, V, Evects);
         eigen_vect_time += eigen_vect_timer.milliseconds_elapsed();
 
         for(size_t j = 0; j < eigVecs.num_cols; j++)
-             cusp::blas::copy(Evects.column(j), X.column(j));
+             cusp::blas::copy(Evects.column(j), eigVecs.column(j));
     }
 
-    cusp::copy(X_start, eigVecs);
+    // cusp::copy(X_start, eigVecs);
 
     if(verbose)
     {
