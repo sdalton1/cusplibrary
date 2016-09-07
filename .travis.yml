@@ -12,6 +12,8 @@ branches:
 addons:
     apt:
       sources:
+          - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.9 main'
+          - sourceline: 'deb-src http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.9 main'
           - llvm-toolchain-trusty-3.9
           - ubuntu-toolchain-r-test
       packages:
