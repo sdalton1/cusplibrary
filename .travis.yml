@@ -12,7 +12,7 @@ branches:
 addons:
     apt:
       sources:
-          - llvm-toolchain-precise
+          - llvm-toolchain-trusty-3.9
           - ubuntu-toolchain-r-test
       packages:
           - clang-3.9
