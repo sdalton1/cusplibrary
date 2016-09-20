@@ -13,6 +13,7 @@ Current release    : v0.5.1 (April 28, 2015)
 View the project at [CUSP Website](http://cusplibrary.github.io) and the [cusp-users discussion forum](http://groups.google.com/group/cusp-users) for information and questions.
 
 <br><hr>
+```C++
 <h3>A Profiling Example</h3>
 #include <cusp/csr_matrix.h>
 #include <cusp/gallery/poisson.h>
@@ -54,7 +55,9 @@ int main(int argc, char** argv)
 
     return 0;
 }
+```
 <br><hr>
+```shell
 Using default matrix (5-pt Laplacian stencil)
 [ 0]cusp_cg                 : 12.8329  (ms), allocated : 0          bytes
 [ 1]    cusp_multiply           : 1.78803  (ms), allocated : 0          bytes
@@ -85,7 +88,7 @@ Using default matrix (5-pt Laplacian stencil)
 [26]    cusp_blas_dotc          : 0.421984 (ms), allocated : 0          bytes
 [27]    cusp_blas_axpby         : 0.350016 (ms), allocated : 0          bytes
 [28]    cusp_blas_nrm2          : 0.42064  (ms), allocated : 0          bytes
-
+```
 
 <br><hr>
 <h3>A Simple Example</h3>
