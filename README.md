@@ -1,6 +1,7 @@
 <hr>
 This branch demonstrates the utility of integrating execution-policies
-into applications for the purpose of profiling and tuning.
+into applications for the purpose of profiling and tuning based on
+[Grapple](https://github.com/sdalton1/grapple) project
 <br><hr>
 <h3>CUSP : A C++ Templated Sparse Matrix Library</h3>
 
@@ -12,9 +13,9 @@ Current release    : v0.5.1 (April 28, 2015)
 
 View the project at [CUSP Website](http://cusplibrary.github.io) and the [cusp-users discussion forum](http://groups.google.com/group/cusp-users) for information and questions.
 
+<h3>A Profiling Example</h3>
 <br><hr>
 ```C++
-<h3>A Profiling Example</h3>
 #include <cusp/csr_matrix.h>
 #include <cusp/gallery/poisson.h>
 #include <cusp/io/matrix_market.h>
@@ -57,6 +58,7 @@ int main(int argc, char** argv)
 }
 ```
 <br><hr>
+<h3>Program Output</h3>
 ```shell
 Using default matrix (5-pt Laplacian stencil)
 [ 0]cusp_cg                 : 12.8329  (ms), allocated : 0          bytes
@@ -89,34 +91,6 @@ Using default matrix (5-pt Laplacian stencil)
 [27]    cusp_blas_axpby         : 0.350016 (ms), allocated : 0          bytes
 [28]    cusp_blas_nrm2          : 0.42064  (ms), allocated : 0          bytes
 ```
-
-<br><hr>
-<h3>A Simple Example</h3>
-
-```C++
-#include <cusp/hyb_matrix.h>
-#include <cusp/io/matrix_market.h>
-#include <cusp/krylov/cg.h>
-
-int main(void)
-{
-    // create an empty sparse matrix structure (HYB format)
-    cusp::hyb_matrix<int, float, cusp::device_memory> A;
-
-    // load a matrix stored in MatrixMarket format
-    cusp::io::read_matrix_market_file(A, "5pt_10x10.mtx");
-
-    // allocate storage for solution (x) and right hand side (b)
-    cusp::array1d<float, cusp::device_memory> x(A.num_rows, 0);
-    cusp::array1d<float, cusp::device_memory> b(A.num_rows, 1);
-
-    // solve the linear system A * x = b with the Conjugate Gradient method
-    cusp::krylov::cg(A, x, b);
-
-    return 0;
-}
-```
-
 <br><hr>
 <h3>Stable Releases</h3>
 
